@@ -1,0 +1,80 @@
+[project]
+name = "checkstock"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "anor32", email = "burgerchiken@gmail.ru" }
+]
+requires-python = ">=3.14"
+dependencies = []
+
+[project.scripts]
+checkstock = "checkstock:main"
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.11",
+    "mypy>=1.15",
+    "pytest>=8.3",
+    "pre-commit>=3.8",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["."]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "C4",  # flake8-comprehensions
+    "DTZ", # flake8-datetimez
+    "PGH", # pygrep-hooks
+    "PLR", # pylint refactor
+    "TRY", # tryceratops
+    "RUF", # ruff-specific
+    "SIM", # flake8-simplify
+    "PERF",# flake8-perf
+]
+ignore = ["E501", "B008"]
+fixable = ["ALL"]
+unfixable = ["ALL"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["checkstock", "agents"]
+
+[tool.ruff.format]
+preview = true
+
+[tool.mypy]
+python_version = "3.14"
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = false
+disallow_any_generics = false
+strict = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-q"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.1",
+    "pre-commit>=4.7.0",
+    "pytest>=9.2.0",
+    "ruff>=0.17.4",
+]
