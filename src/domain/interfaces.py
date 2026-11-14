@@ -11,6 +11,7 @@ from src.application.dtos import (
     CreateWarehouseDTO,
     ListMovementsDTO,
     ListStocksDTO,
+    StockListItemDTO,
 )
 from src.domain.entities import Movement, Product, Stock, Warehouse, WarehouseStockAvailability
 
@@ -54,12 +55,7 @@ class IStockRepository(ABC):
     ) -> tuple[Product, Stock, Warehouse]: ...
 
     @abstractmethod
-    async def list_stocks(self, query: ListStocksDTO) -> list[tuple[Product, Stock, Warehouse]]: ...
-
-    @abstractmethod
-    async def get_or_create_for_product_warehouse(
-        self, product_id: int, warehouse_id: int
-    ) -> tuple[Product, Stock, Warehouse]: ...
+    async def list_stocks(self, query: ListStocksDTO) -> tuple[list[StockListItemDTO], int]: ...
 
     @abstractmethod
     async def get_by_id(self, stock_id: int) -> Stock: ...
