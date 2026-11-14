@@ -22,11 +22,15 @@ dependencies = [
 ]
 
 [project.scripts]
-checkstock = "checkstock:main"
+checkstock = "src:main"
 
 [build-system]
 requires = ["uv_build>=0.12.23,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "src"
+module-root = ""
 
 [tool.ruff]
 line-length = 100
@@ -49,12 +53,21 @@ select = [
     "SIM", # flake8-simplify
     "PERF",# flake8-perf
 ]
-ignore = ["E501", "B008"]
+ignore = [
+    "E501",
+    "B008",
+    "TRY003",
+    "PLR0913",
+    "PLR0917",
+    "PLR2004",
+    "RUF001",
+    "RUF002",
+]
 fixable = ["ALL"]
 unfixable = ["ALL"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["checkstock", "agents"]
+known-first-party = ["src", "agents"]
 
 [tool.ruff.format]
 preview = true
@@ -74,9 +87,17 @@ python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-q"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "integration: tests that require external services/containers (e.g. PostgreSQL via Testcontainers)",
+]
 
 [dependency-groups]
 dev = [
     "mypy>=2.4.1",
     "pre-commit>=4.7.0",
+    "pytest-asyncio>=1.4.1.post1",
+    "pytest-cov>=7.1.0",
+    "testcontainers[postgres]>=4.10.0",
 ]
