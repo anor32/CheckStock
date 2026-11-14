@@ -32,6 +32,10 @@ class StockNotFoundError(ProductNotFoundError):
 class InsufficientStockError(CheckStockDomainError):
     """Недостаточно остатка для операции."""
 
+    def __init__(self, message: str = "", data: dict[str, Any] | None = None) -> None:
+        super().__init__(message, data)
+        self.data = data
+
 
 class InvalidMovementError(CheckStockDomainError):
     """Движение имеет некорректное состояние (например, qty <= 0)."""
