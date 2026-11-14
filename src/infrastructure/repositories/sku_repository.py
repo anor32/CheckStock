@@ -28,16 +28,29 @@ class SqlAlchemySkuRepository(ISkuRepository):
         return model.to_entity()
 
     async def add(self, product: Product) -> Product:
-        existing = await self.session.execute(
+        if product.idempotency_key:
+            existing = await self._get_by_idempotency_key(product.idempotency_key)
+            if existing:
+                return existing
+        existing_sku = await self.session.execute(
             select(ProductModel.id).where(ProductModel.sku == product.sku)
         )
-        if existing.scalar_one_or_none() is not None:
+        if existing_sku.scalar_one_or_none() is not None:
             raise ProductAlreadyExistsError("Товар с таким SKU уже существует")
-        model = ProductModel(sku=product.sku, name=product.name)
+        model = ProductModel.from_entity(product)
         self.session.add(model)
         await self.session.flush()
         await self.session.refresh(model)
         return model.to_entity()
+
+    async def _get_by_idempotency_key(self, idempotency_key: str | None) -> Product | None:
+        if not idempotency_key:
+            return None
+        res = await self.session.execute(
+            select(ProductModel).where(ProductModel.idempotency_key == idempotency_key)
+        )
+        model = res.scalar_one_or_none()
+        return model.to_entity() if model else None
 
     async def list_all(self) -> list[Product]:
         res = await self.session.execute(select(ProductModel).order_by(ProductModel.id))
