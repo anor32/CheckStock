@@ -5,13 +5,13 @@ from typing import Any, Self
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.interfaces import (
-    IOrderRepository,
+    IMovementRepository,
     ISkuRepository,
     IStockRepository,
     IUnitOfWork,
     IWarehouseRepository,
 )
-from src.infrastructure.repositories.order_repository import SqlAlchemyOrderRepository
+from src.infrastructure.repositories.movement_repository import SqlAlchemyMovementRepository
 from src.infrastructure.repositories.sku_repository import SqlAlchemySkuRepository
 from src.infrastructure.repositories.stock_repository import SqlAlchemyStockRepository
 from src.infrastructure.repositories.warehouse_repository import SqlAlchemyWarehouseRepository
@@ -23,7 +23,7 @@ class SqlAlchemyUnitOfWork(IUnitOfWork):
         self.sku_repo: ISkuRepository = SqlAlchemySkuRepository(session)
         self.warehouse_repo: IWarehouseRepository = SqlAlchemyWarehouseRepository(session)
         self.stock_repo: IStockRepository = SqlAlchemyStockRepository(session)
-        self.order_repo: IOrderRepository = SqlAlchemyOrderRepository(session)
+        self.movement_repo: IMovementRepository = SqlAlchemyMovementRepository(session)
         self._active = False
 
     async def __aenter__(self) -> Self:
