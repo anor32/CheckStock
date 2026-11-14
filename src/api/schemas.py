@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.domain.entities import MovementStatus, MovementType
+from src.domain.entities import MovementStatus, MovementType, WarehouseStockAvailability
 
 
 class ProductResponse(BaseModel):
@@ -153,3 +154,78 @@ class ListWarehousesRequest(BaseModel):
     """Схема запроса списка складов."""
 
     include_deleted: bool = False
+
+
+class OtherWarehouseAvailabilityResponse(BaseModel):
+    warehouse_id: int
+    warehouse_name: str
+    qty_available: int
+    qty_physical: int
+    qty_reserved_fbs: int
+
+
+class ErrorResponse(BaseModel):
+    detail: str
+    available: int
+    requested: int
+    other_warehouses: list[OtherWarehouseAvailabilityResponse] | None = None
+
+    @staticmethod
+    def _serialize_other_warehouses(
+        other_warehouses: list[Any] | None,
+    ) -> list[OtherWarehouseAvailabilityResponse]:
+        if not other_warehouses:
+            return []
+        result: list[OtherWarehouseAvailabilityResponse] = []
+        for item in other_warehouses:
+            if isinstance(item, WarehouseStockAvailability):
+                result.append(
+                    OtherWarehouseAvailabilityResponse(
+                        warehouse_id=item.warehouse_id,
+                        warehouse_name=item.warehouse_name,
+                        qty_available=item.qty_available,
+                        qty_physical=item.qty_physical,
+                        qty_reserved_fbs=item.qty_reserved_fbs,
+                    )
+                )
+            elif isinstance(item, dict):
+                result.append(
+                    OtherWarehouseAvailabilityResponse(
+                        warehouse_id=item.get("warehouse_id", 0),
+                        warehouse_name=item.get("warehouse_name", ""),
+                        qty_available=item.get("qty_available", 0),
+                        qty_physical=item.get("qty_physical", 0),
+                        qty_reserved_fbs=item.get("qty_reserved_fbs", 0),
+                    )
+                )
+            else:
+                result.append(
+                    OtherWarehouseAvailabilityResponse(
+                        warehouse_id=getattr(item, "warehouse_id", 0),
+                        warehouse_name=getattr(item, "warehouse_name", ""),
+                        qty_available=getattr(item, "qty_available", 0),
+                        qty_physical=getattr(item, "qty_physical", 0),
+                        qty_reserved_fbs=getattr(item, "qty_reserved_fbs", 0),
+                    )
+                )
+        return result
+
+    @classmethod
+    def build_detail(cls, data: dict[str, Any]) -> str:
+        available = int(data.get("available", data.get("selected_qty", 0)))
+        requested = int(data.get("requested", data.get("requested_qty", 0)))
+        return f"Недостаточно остатка: доступно {available}, запрошено {requested}."
+
+    @classmethod
+    def from_error_data(cls, data: dict[str, Any] | None) -> ErrorResponse:
+        payload = data or {}
+        available = int(payload.get("available", payload.get("selected_qty", 0)))
+        requested = int(payload.get("requested", payload.get("requested_qty", 0)))
+        other_warehouses = cls._serialize_other_warehouses(payload.get("other_warehouses"))
+        detail = cls.build_detail(payload) if payload else "Недостаточно остатка для операции."
+        return cls(
+            detail=detail,
+            available=available,
+            requested=requested,
+            other_warehouses=other_warehouses or None,
+        )
