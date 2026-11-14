@@ -8,6 +8,7 @@ from typing import Any, Self
 from src.application.dtos import (
     CreateMovementDTO,
     CreateProductDTO,
+    CreateStockDTO,
     CreateWarehouseDTO,
     ListMovementsDTO,
     ListStocksDTO,
@@ -64,7 +65,7 @@ class IStockRepository(ABC):
     async def update(self, stock: Stock) -> Stock: ...
 
     @abstractmethod
-    async def create(self, product_id: int, warehouse_id: int) -> Stock: ...
+    async def create(self, data: CreateStockDTO) -> Stock: ...
 
     @abstractmethod
     async def list_other_warehouses_availability(

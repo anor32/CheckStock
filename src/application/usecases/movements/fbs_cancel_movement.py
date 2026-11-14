@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.application.dtos import FbsCancelMovementInput
+from src.application.dtos import CreateStockDTO, FbsCancelMovementInput
 from src.domain.entities import Movement, MovementStatus, MovementType, Stock
 from src.domain.exceptions import StockNotFoundError
 from src.domain.interfaces import IUnitOfWork
@@ -39,6 +39,8 @@ class FbsCancelMovementUseCase:
                 product_id, warehouse_id
             )
         except StockNotFoundError:
-            return await self.uow.stock_repo.create(product_id, warehouse_id)
+            return await self.uow.stock_repo.create(
+                CreateStockDTO(product_id=product_id, warehouse_id=warehouse_id)
+            )
         else:
             return stock

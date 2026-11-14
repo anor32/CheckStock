@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 from src.domain.entities import Movement, MovementStatus, MovementType, Product, Stock, Warehouse
 
@@ -27,6 +28,24 @@ class CreateWarehouseDTO:
     def __post_init__(self) -> None:
         if not self.name or not self.name.strip():
             raise ValueError("name must not be empty")
+
+
+@dataclass(frozen=True)
+class CreateStockDTO:
+    product_id: int
+    warehouse_id: int
+    qty_physical: int = 0
+    qty_reserved_fbs: int = 0
+
+    def __post_init__(self) -> None:
+        if self.product_id <= 0:
+            raise ValueError("product_id must be positive")
+        if self.warehouse_id <= 0:
+            raise ValueError("warehouse_id must be positive")
+        if self.qty_physical < 0:
+            raise ValueError("qty_physical must be non-negative")
+        if self.qty_reserved_fbs < 0:
+            raise ValueError("qty_reserved_fbs must be non-negative")
 
 
 @dataclass(frozen=True)
@@ -240,6 +259,23 @@ class StockListItemDTO:
             qty_physical=stock.qty_physical,
             qty_reserved_fbs=stock.qty_reserved_fbs,
             qty_available=stock.qty_available,
+        )
+
+    @classmethod
+    def from_models(cls, product: Any, stock: Any, warehouse: Any) -> StockListItemDTO:
+        qty_physical = stock.qty_physical
+        qty_reserved_fbs = stock.qty_reserved_fbs
+        qty_available = getattr(stock, "qty_available", qty_physical - qty_reserved_fbs)
+        return cls(
+            product_id=product.id,
+            sku=product.sku,
+            product_name=product.name,
+            warehouse_id=warehouse.id,
+            warehouse_name=warehouse.name,
+            warehouse_is_deleted=warehouse.is_deleted,
+            qty_physical=qty_physical,
+            qty_reserved_fbs=qty_reserved_fbs,
+            qty_available=qty_available,
         )
 
 

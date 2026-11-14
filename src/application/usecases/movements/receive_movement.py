@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.application.dtos import ReceiveMovementInput
+from src.application.dtos import CreateStockDTO, ReceiveMovementInput
 from src.domain.entities import Movement, MovementType, Stock
 from src.domain.exceptions import StockNotFoundError
 from src.domain.interfaces import IUnitOfWork
@@ -37,6 +37,8 @@ class ReceiveMovementUseCase:
                 product_id, warehouse_id
             )
         except StockNotFoundError:
-            return await self.uow.stock_repo.create(product_id, warehouse_id)
+            return await self.uow.stock_repo.create(
+                CreateStockDTO(product_id=product_id, warehouse_id=warehouse_id)
+            )
         else:
             return stock

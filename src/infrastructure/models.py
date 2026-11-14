@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
@@ -125,6 +126,15 @@ class StockModel(Base):
     @property
     def qty_available(self) -> int:
         return self.qty_physical - self.qty_reserved_fbs
+
+    @classmethod
+    def from_create_dto(cls, data: Any) -> StockModel:
+        return cls(
+            product_id=data.product_id,
+            warehouse_id=data.warehouse_id,
+            qty_physical=data.qty_physical,
+            qty_reserved_fbs=data.qty_reserved_fbs,
+        )
 
     def to_entity(self) -> Stock:
         return Stock(

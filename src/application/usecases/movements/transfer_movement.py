@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.application.dtos import CreateTransferMovementInput
+from src.application.dtos import CreateStockDTO, CreateTransferMovementInput
 from src.domain.entities import Movement, Stock, Warehouse
 from src.domain.exceptions import InsufficientStockError, StockNotFoundError
 from src.domain.interfaces import IUnitOfWork
@@ -50,7 +50,9 @@ class TransferMovementUseCase:
                 product_id, warehouse_id
             )
         except StockNotFoundError:
-            return await self.uow.stock_repo.create(product_id, warehouse_id)
+            return await self.uow.stock_repo.create(
+                CreateStockDTO(product_id=product_id, warehouse_id=warehouse_id)
+            )
         else:
             return stock
 
