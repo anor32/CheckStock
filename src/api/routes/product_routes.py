@@ -19,7 +19,10 @@ async def list_products(
     uc: Annotated[ListProductsUseCase, Depends(get_list_products_use_case)],
 ) -> list[ProductResponse]:
     items = await uc.execute()
-    return [ProductResponse(id=i.id, sku=i.sku, name=i.name) for i in items]
+    return [
+        ProductResponse(id=i.id, sku=i.sku, name=i.name, idempotency_key=i.idempotency_key)
+        for i in items
+    ]
 
 
 @router.post("/products", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
@@ -27,5 +30,11 @@ async def create_product(
     payload: ProductCreateRequest,
     uc: Annotated[CreateProductUseCase, Depends(get_create_product_use_case)],
 ) -> ProductResponse:
-    item = await uc.execute(CreateProductInput(sku=payload.sku, name=payload.name))
-    return ProductResponse(id=item.id, sku=item.sku, name=item.name)
+    item = await uc.execute(
+        CreateProductInput(
+            sku=payload.sku, name=payload.name, idempotency_key=payload.idempotency_key
+        )
+    )
+    return ProductResponse(
+        id=item.id, sku=item.sku, name=item.name, idempotency_key=item.idempotency_key
+    )
