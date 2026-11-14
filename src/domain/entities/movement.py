@@ -27,7 +27,7 @@ class MovementStatus(StrEnum):
 
 @dataclass
 class Movement:
-    id: int | None
+    id: int
     product_id: int
     type: MovementType
     qty: int
@@ -35,7 +35,6 @@ class Movement:
     to_warehouse_id: int | None = None
     status: MovementStatus = MovementStatus.PENDING
     idempotency_key: str | None = None
-    was_created: bool = True
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None
 

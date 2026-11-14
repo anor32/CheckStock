@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.application.dtos import CreateProductDTO
 from src.domain.entities import Product
 from src.domain.exceptions import ProductAlreadyExistsError, ProductNotFoundError
 from src.domain.interfaces import ISkuRepository
@@ -27,30 +28,17 @@ class SqlAlchemySkuRepository(ISkuRepository):
             raise ProductNotFoundError(f"Product not found: sku={sku}")
         return model.to_entity()
 
-    async def add(self, product: Product) -> Product:
-        if product.idempotency_key:
-            existing = await self._get_by_idempotency_key(product.idempotency_key)
-            if existing:
-                return existing
+    async def add(self, data: CreateProductDTO) -> Product:
         existing_sku = await self.session.execute(
-            select(ProductModel.id).where(ProductModel.sku == product.sku)
+            select(ProductModel.id).where(ProductModel.sku == data.sku)
         )
         if existing_sku.scalar_one_or_none() is not None:
             raise ProductAlreadyExistsError("Товар с таким SKU уже существует")
-        model = ProductModel.from_entity(product)
+        model = ProductModel(sku=data.sku, name=data.name)
         self.session.add(model)
         await self.session.flush()
         await self.session.refresh(model)
         return model.to_entity()
-
-    async def _get_by_idempotency_key(self, idempotency_key: str | None) -> Product | None:
-        if not idempotency_key:
-            return None
-        res = await self.session.execute(
-            select(ProductModel).where(ProductModel.idempotency_key == idempotency_key)
-        )
-        model = res.scalar_one_or_none()
-        return model.to_entity() if model else None
 
     async def list_all(self) -> list[Product]:
         res = await self.session.execute(select(ProductModel).order_by(ProductModel.id))

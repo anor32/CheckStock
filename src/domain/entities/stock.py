@@ -8,7 +8,7 @@ from src.domain.exceptions import InsufficientStockError, InvalidMovementError
 
 @dataclass
 class Stock:
-    id: int | None
+    id: int
     product_id: int
     warehouse_id: int
     qty_physical: int

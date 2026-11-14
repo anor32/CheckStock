@@ -227,14 +227,12 @@ async function loadStocks() {
         include_deleted_warehouses,
       },
     });
-    state.stocks.total = data.total || 0;
     state.stocks.page = data.page || state.stocks.page;
     state.stocks.pageSize = data.page_size || state.stocks.pageSize;
     renderStocks(data.items || []);
-    const maxPage = Math.max(1, Math.ceil(state.stocks.total / state.stocks.pageSize));
-    $("#stocks-page-info").textContent = `Страница ${state.stocks.page} из ${maxPage}, всего: ${state.stocks.total}`;
+    $("#stocks-page-info").textContent = `Страница ${state.stocks.page}`;
     $("#stocks-prev").disabled = state.stocks.page <= 1;
-    $("#stocks-next").disabled = state.stocks.page >= maxPage;
+    $("#stocks-next").disabled = (data.items || []).length < state.stocks.pageSize;
     setStatus("#stocks-status", data.items?.length ? "" : "Нет данных");
   } catch (e) {
     renderStocks([]);

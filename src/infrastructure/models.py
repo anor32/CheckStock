@@ -55,7 +55,6 @@ class ProductModel(Base):
         return cls(
             sku=product.sku,
             name=product.name,
-            idempotency_key=product.idempotency_key,
         )
 
     def to_entity(self) -> Product:
@@ -63,7 +62,6 @@ class ProductModel(Base):
             id=self.id,
             sku=self.sku,
             name=self.name,
-            idempotency_key=self.idempotency_key,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -78,9 +76,6 @@ class WarehouseModel(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    idempotency_key: Mapped[str | None] = mapped_column(
-        String(128), unique=True, nullable=True, index=True
-    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -94,7 +89,6 @@ class WarehouseModel(Base):
             name=warehouse.name,
             is_deleted=warehouse.is_deleted,
             deleted_at=warehouse.deleted_at,
-            idempotency_key=warehouse.idempotency_key,
         )
 
     def to_entity(self) -> Warehouse:
@@ -103,7 +97,6 @@ class WarehouseModel(Base):
             name=self.name,
             is_deleted=self.is_deleted,
             deleted_at=self.deleted_at,
-            idempotency_key=self.idempotency_key,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )

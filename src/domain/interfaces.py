@@ -5,7 +5,13 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Self
 
-from src.application.dtos import ListMovementsQuery
+from src.application.dtos import (
+    CreateMovementDTO,
+    CreateProductDTO,
+    CreateWarehouseDTO,
+    ListMovementsDTO,
+    ListStocksDTO,
+)
 from src.domain.entities import Movement, Product, Stock, Warehouse, WarehouseStockAvailability
 
 
@@ -17,7 +23,7 @@ class ISkuRepository(ABC):
     async def get_by_sku(self, sku: str) -> Product: ...
 
     @abstractmethod
-    async def add(self, product: Product) -> Product: ...
+    async def add(self, data: CreateProductDTO) -> Product: ...
 
     @abstractmethod
     async def list_all(self) -> list[Product]: ...
@@ -30,7 +36,7 @@ class IWarehouseRepository(ABC):
     async def get_by_id(self, warehouse_id: int, include_deleted: bool = False) -> Warehouse: ...
 
     @abstractmethod
-    async def create(self, warehouse: Warehouse) -> Warehouse: ...
+    async def create(self, data: CreateWarehouseDTO) -> Warehouse: ...
 
     @abstractmethod
     async def update(self, warehouse: Warehouse) -> Warehouse: ...
@@ -48,14 +54,7 @@ class IStockRepository(ABC):
     ) -> tuple[Product, Stock, Warehouse]: ...
 
     @abstractmethod
-    async def list_stocks(
-        self,
-        page: int,
-        page_size: int,
-        sku: str | None = None,
-        warehouse_id: int | None = None,
-        include_deleted_warehouses: bool = True,
-    ) -> tuple[list[tuple[Product, Stock, Warehouse]], int]: ...
+    async def list_stocks(self, query: ListStocksDTO) -> list[tuple[Product, Stock, Warehouse]]: ...
 
     @abstractmethod
     async def get_or_create_for_product_warehouse(
@@ -66,10 +65,10 @@ class IStockRepository(ABC):
     async def get_by_id(self, stock_id: int) -> Stock: ...
 
     @abstractmethod
-    async def save(self, stock: Stock) -> Stock: ...
+    async def update(self, stock: Stock) -> Stock: ...
 
     @abstractmethod
-    async def add(self, stock: Stock) -> Stock: ...
+    async def create(self, product_id: int, warehouse_id: int) -> Stock: ...
 
     @abstractmethod
     async def list_other_warehouses_availability(
@@ -77,11 +76,11 @@ class IStockRepository(ABC):
     ) -> list[WarehouseStockAvailability]: ...
 
 
-class IOrderRepository(ABC):
-    """Репозиторий заказов/движений."""
+class IMovementRepository(ABC):
+    """Репозиторий движений."""
 
     @abstractmethod
-    async def add_movement(self, movement: Movement) -> Movement: ...
+    async def add_movement(self, data: CreateMovementDTO) -> Movement: ...
 
     @abstractmethod
     async def save_movement(self, movement: Movement) -> Movement: ...
@@ -90,14 +89,17 @@ class IOrderRepository(ABC):
     async def get_movement(self, movement_id: int) -> Movement: ...
 
     @abstractmethod
-    async def list_movements(self, query: ListMovementsQuery) -> tuple[list[Movement], int]: ...
+    async def get_by_idempotency_key(self, idempotency_key: str) -> Movement | None: ...
+
+    @abstractmethod
+    async def list_movements(self, query: ListMovementsDTO) -> tuple[list[Movement], int]: ...
 
 
 class IUnitOfWork(ABC):
     sku_repo: ISkuRepository
     warehouse_repo: IWarehouseRepository
     stock_repo: IStockRepository
-    order_repo: IOrderRepository
+    movement_repo: IMovementRepository
 
     @abstractmethod
     async def __aenter__(self) -> Self: ...

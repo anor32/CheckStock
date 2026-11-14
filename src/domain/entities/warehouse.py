@@ -16,11 +16,10 @@ class WarehouseStockAvailability:
 
 @dataclass
 class Warehouse:
-    id: int | None
+    id: int
     name: str
     is_deleted: bool = False
     deleted_at: datetime | None = None
-    idempotency_key: str | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
