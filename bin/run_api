@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+"""Run CheckStock API: migrations -> fixtures -> uvicorn."""
+
+from __future__ import annotations
+
+import subprocess
+import sys
+
+from src.api.main import app
+
+__all__ = ["app"]
+
+
+def _run_step(args: list[str]) -> None:
+    result = subprocess.run(args, check=False)
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
+
+
+def main() -> None:
+    # 1) Apply migrations
+    _run_step([sys.executable, "-m", "alembic", "upgrade", "head"])
+    # 2) Load test fixtures (idempotent)
+    _run_step([sys.executable, "-m", "src.infrastructure.fixtures"])
+    # 3) Start API
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+if __name__ == "__main__":
+    main()
