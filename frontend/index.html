@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CheckStock</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>CheckStock</h1>
+      <nav class="nav" aria-label="Навигация">
+        <button class="nav-btn active" data-view="stocks">Остатки</button>
+        <button class="nav-btn" data-view="warehouses">Склады</button>
+        <button class="nav-btn" data-view="movements">История операций</button>
+        <button class="nav-btn" data-view="receipts">Приёмки и операции</button>
+        <button class="nav-btn" data-view="fbs">Резервация FBS</button>
+      </nav>
+    </header>
+
+    <div id="global-message" class="message hidden" role="status"></div>
+
+    <main>
+      <!-- Stocks -->
+      <section id="view-stocks" class="view active">
+        <h2>Остатки</h2>
+        <form id="stocks-filters" class="filters">
+          <label>SKU <input type="text" name="sku" placeholder="SKU" /></label>
+          <label>Склад
+            <select name="warehouse_id" id="stocks-warehouse-filter">
+              <option value="">Все</option>
+            </select>
+          </label>
+          <label class="checkbox"><input type="checkbox" name="include_deleted_warehouses" /> Включать удалённые склады</label>
+          <button type="submit">Показать/Обновить</button>
+        </form>
+        <div id="stocks-status" class="status"></div>
+        <div class="table-wrap">
+          <table id="stocks-table">
+            <thead>
+              <tr>
+                <th>SKU</th><th>Товар</th><th>Склад (ФФ)</th><th>Статус склада</th>
+                <th>Физический</th><th>Резерв FBS</th><th>Доступный</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="stocks-pagination">
+          <button id="stocks-prev">Назад</button>
+          <span id="stocks-page-info"></span>
+          <button id="stocks-next">Вперёд</button>
+        </div>
+
+        <section class="card in-transit-block" aria-labelledby="in-transit-title">
+          <div class="card-head">
+            <h3 id="in-transit-title">Товары в пути</h3>
+            <button type="button" id="in-transit-refresh">Обновить</button>
+          </div>
+          <p class="small">Товары в пути: между ФФ, на склад маркетплейса (FBO) и к клиенту (FBS)</p>
+          <div id="in-transit-status" class="status"></div>
+          <div class="table-wrap">
+            <table id="in-transit-table">
+              <thead>
+                <tr>
+                  <th>Категория</th><th>ID</th><th>Дата/время</th><th>Товар</th><th>Кол-во</th><th>Откуда</th><th>Куда</th><th>Тип</th><th>Статус</th><th>Действия</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+
+      <section id="view-warehouses" class="view">
+        <h2>Склады</h2>
+        <section class="card">
+          <h3>Добавить склад</h3>
+          <form id="warehouse-create-form" class="form compact-form">
+            <label>Название склада <input type="text" name="name" placeholder="Например: ФФ Москва" required /></label>
+            <button type="submit">Добавить склад</button>
+          </form>
+        </section>
+        <div class="actions-row">
+          <label class="checkbox"><input type="checkbox" id="warehouses-show-deleted" /> Показать удалённые</label>
+          <button id="warehouses-refresh" type="button">Обновить</button>
+        </div>
+        <div id="warehouses-status" class="status"></div>
+        <div class="table-wrap">
+          <table id="warehouses-table">
+            <thead><tr><th>ID</th><th>Название</th><th>Статус</th><th>Действия</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Movements -->
+      <section id="view-movements" class="view">
+        <h2>История операций</h2>
+        <form id="movements-filters" class="filters">
+          <label>Товар
+            <select name="product_id" id="movements-product-filter"><option value="">Все</option></select>
+          </label>
+          <label>Тип
+            <select name="type" id="movements-type-filter">
+              <option value="">Все</option>
+              <option value="inbound">Приход</option>
+              <option value="transfer">Перемещение</option>
+              <option value="fbo_out">Отправка на маркетплейс</option>
+              <option value="fbs_reserve">Резерв FBS</option>
+              <option value="fbs_ship">Отгрузка FBS</option>
+              <option value="fbs_cancel">Отмена FBS</option>
+            </select>
+          </label>
+          <label>Статус
+            <select name="status" id="movements-status-filter">
+              <option value="">Все</option>
+              <option value="draft">Черновик</option>
+              <option value="in_transit">В пути</option>
+              <option value="completed">Завершено</option>
+              <option value="pending">Ожидает</option>
+              <option value="cancelled">Отменено</option>
+            </select>
+          </label>
+          <label>Склад
+            <select name="warehouse_id" id="movements-warehouse-filter"><option value="">Все</option></select>
+          </label>
+          <label>Дата с <input type="datetime-local" name="date_from" /></label>
+          <label>Дата по <input type="datetime-local" name="date_to" /></label>
+          <button type="submit">Показать/Обновить</button>
+        </form>
+        <div id="movements-status" class="status"></div>
+        <div class="table-wrap">
+          <table id="movements-table">
+            <thead>
+              <tr>
+                <th>Дата/время</th><th>Товар (SKU/название)</th><th>Кол-во</th>
+                <th>Откуда</th><th>Куда</th><th>Тип</th><th>Статус</th><th>ID</th><th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="movements-pagination">
+          <button id="movements-prev">Назад</button>
+          <span id="movements-page-info"></span>
+          <button id="movements-next">Вперёд</button>
+        </div>
+        <div id="movement-details" class="details hidden"></div>
+      </section>
+
+      <!-- Receipts / Operations -->
+      <section id="view-receipts" class="view">
+        <h2>Приёмки и операции</h2>
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="inbound">Приёмка на склад</button>
+          <button class="tab-btn" data-tab="transfer">Перемещение</button>
+          <button class="tab-btn" data-tab="receive">Принять перемещение</button>
+          <button class="tab-btn" data-tab="fbo-out">Отправка на маркетплейс</button>
+          <button class="tab-btn" data-tab="product-create">Добавить товар</button>
+        </div>
+        <div id="receipts-status" class="status"></div>
+
+        <div id="tab-inbound" class="tab-panel active">
+          <form id="form-inbound" class="form">
+            <label>Товар (существующий)
+              <select name="product_id" id="inbound-product" required></select>
+            </label>
+            <label>Склад
+              <select name="warehouse_id" id="inbound-warehouse" required></select>
+            </label>
+            <label>Количество <input type="number" name="qty" min="1" step="1" required /></label>
+            <button type="submit">Провести приход</button>
+          </form>
+          <p class="small">Приход выполняется только для существующих товаров. Новый товар создайте во вкладке «Добавить товар».</p>
+        </div>
+
+        <div id="tab-transfer" class="tab-panel">
+          <form id="form-transfer" class="form">
+            <label>Товар
+              <select name="product_id" id="transfer-product" required></select>
+            </label>
+            <label>Склад-отправитель
+              <select name="from_warehouse_id" id="transfer-from" required></select>
+            </label>
+            <label>Склад-получатель
+              <select name="to_warehouse_id" id="transfer-to" required></select>
+            </label>
+            <label>Количество <input type="number" name="qty" min="1" step="1" required /></label>
+            <button type="submit">Отправить перемещение</button>
+          </form>
+        </div>
+
+        <div id="tab-receive" class="tab-panel">
+          <form id="form-receive" class="form">
+            <label>ID движения
+              <input type="number" name="movement_id" id="receive-movement-id" min="1" required />
+            </label>
+            <label>Или выбрать перемещение «В пути»
+              <select id="receive-movement-select"><option value="">— выбрать —</option></select>
+            </label>
+            <button type="submit">Принять перемещение</button>
+          </form>
+        </div>
+
+        <div id="tab-fbo-out" class="tab-panel">
+          <form id="form-fbo-out" class="form">
+            <label>Товар
+              <select name="product_id" id="fbo-product" required></select>
+            </label>
+            <label>Склад (откуда отправка)
+              <select name="from_warehouse_id" id="fbo-from-warehouse" required></select>
+            </label>
+            <label>Количество <input type="number" name="qty" min="1" step="1" required /></label>
+            <button type="submit">Отправить на маркетплейс</button>
+          </form>
+          <p class="small">Отправка на маркетплейс выполняется без выбора склада-получателя. В остатках отдельный склад маркетплейса не отображается.</p>
+        </div>
+
+        <div id="tab-product-create" class="tab-panel">
+          <form id="form-product-create" class="form">
+            <label>SKU <input type="text" name="sku" placeholder="Например: SKU-001" required /></label>
+            <label>Название <input type="text" name="name" placeholder="Название товара" required /></label>
+            <button type="submit">Добавить товар</button>
+          </form>
+          <p class="small">После создания товар станет доступен в формах прихода, перемещения и FBO.</p>
+        </div>
+
+        <div id="receipts-result" class="result"></div>
+        <div class="actions-row">
+          <button type="button" id="goto-movements">К «Истории операций»</button>
+          <button type="button" id="goto-stocks">К «Остаткам»</button>
+        </div>
+      </section>
+
+      <!-- FBS Reservation -->
+      <section id="view-fbs" class="view">
+        <h2>Резервация FBS</h2>
+
+        <section class="card">
+          <h3>Создать резерв</h3>
+          <form id="form-fbs-reserve" class="form compact-form">
+            <label>Товар
+              <select name="product_id" id="fbs-product" required></select>
+            </label>
+            <label>Склад (активный)
+              <select name="warehouse_id" id="fbs-warehouse" required></select>
+            </label>
+            <label>Количество
+              <input type="number" name="qty" min="1" step="1" required />
+            </label>
+            <button type="submit">Зарезервировать</button>
+          </form>
+          <p class="small">Резерв создаётся для активного склада. Обновление существующего резерва запрещено: для изменения отмените старый и создайте новый.</p>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h3>Активные резервы</h3>
+            <button type="button" id="fbs-reserves-refresh">Обновить</button>
+          </div>
+          <div id="fbs-status" class="status"></div>
+          <div class="table-wrap">
+            <table id="fbs-reserves-table">
+              <thead>
+                <tr>
+                  <th>ID резерва</th><th>Товар</th><th>Склад</th><th>Кол-во</th><th>Дата</th><th>Статус</th><th>Действия</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <div id="fbs-result" class="result"></div>
+      </section>
+    </main>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
