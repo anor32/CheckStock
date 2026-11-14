@@ -62,6 +62,16 @@ class CreateInboundMovementInput:
         if self.qty <= 0:
             raise ValueError("qty must be positive")
 
+    def to_create_movement_dto(self) -> CreateMovementDTO:
+        return CreateMovementDTO(
+            product_id=self.product_id,
+            type=MovementType.INBOUND,
+            qty=self.qty,
+            to_warehouse_id=self.warehouse_id,
+            status=MovementStatus.COMPLETED,
+            idempotency_key=self.idempotency_key,
+        )
+
 
 @dataclass(frozen=True)
 class CreateTransferMovementInput:
@@ -81,6 +91,17 @@ class CreateTransferMovementInput:
         if self.qty <= 0:
             raise ValueError("qty must be positive")
 
+    def to_create_movement_dto(self) -> CreateMovementDTO:
+        return CreateMovementDTO(
+            product_id=self.product_id,
+            type=MovementType.TRANSFER_OUT,
+            qty=self.qty,
+            from_warehouse_id=self.from_warehouse_id,
+            to_warehouse_id=self.to_warehouse_id,
+            status=MovementStatus.IN_TRANSIT,
+            idempotency_key=self.idempotency_key,
+        )
+
 
 @dataclass(frozen=True)
 class CreateFboOutMovementInput:
@@ -97,6 +118,16 @@ class CreateFboOutMovementInput:
         if self.qty <= 0:
             raise ValueError("qty must be positive")
 
+    def to_create_movement_dto(self) -> CreateMovementDTO:
+        return CreateMovementDTO(
+            product_id=self.product_id,
+            type=MovementType.FBO_OUT,
+            qty=self.qty,
+            from_warehouse_id=self.from_warehouse_id,
+            status=MovementStatus.IN_TRANSIT,
+            idempotency_key=self.idempotency_key,
+        )
+
 
 @dataclass(frozen=True)
 class CreateFbsReserveMovementInput:
@@ -112,6 +143,16 @@ class CreateFbsReserveMovementInput:
             raise ValueError("warehouse_id must be positive")
         if self.qty <= 0:
             raise ValueError("qty must be positive")
+
+    def to_create_movement_dto(self) -> CreateMovementDTO:
+        return CreateMovementDTO(
+            product_id=self.product_id,
+            type=MovementType.FBS_RESERVE,
+            qty=self.qty,
+            from_warehouse_id=self.warehouse_id,
+            status=MovementStatus.PENDING,
+            idempotency_key=self.idempotency_key,
+        )
 
 
 # ---------- Commands (actions on existing movements) ----------
