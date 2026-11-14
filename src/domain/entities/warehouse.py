@@ -12,6 +12,7 @@ class WarehouseStockAvailability:
     warehouse_name: str
     qty_available: int
     qty_physical: int
+    qty_reserved_fbs: int
 
 
 @dataclass
