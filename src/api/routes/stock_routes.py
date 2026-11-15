@@ -13,6 +13,7 @@ from src.api.schemas import (
     StockItemResponse,
 )
 from src.application.dtos import ListStocksQuery
+from src.application.pagination import Pagination
 from src.application.usecases import GetStockByPairUseCase, ListStocksUseCase
 
 router = APIRouter(prefix="/api/v1", tags=["stocks"])
@@ -23,7 +24,12 @@ async def list_stocks(
     uc: Annotated[ListStocksUseCase, Depends(get_list_stocks_use_case)],
     payload: Annotated[ListStocksRequest, Query()],
 ) -> PaginatedStocksResponse:
-    query = ListStocksQuery(**payload.model_dump())
+    query = ListStocksQuery(
+        pagination=Pagination(page=payload.page, page_size=payload.page_size),
+        sku=payload.sku,
+        warehouse_id=payload.warehouse_id,
+        include_deleted_warehouses=payload.include_deleted_warehouses,
+    )
     result = await uc.execute(query)
     return PaginatedStocksResponse(
         items=[StockItemResponse.model_validate(i) for i in result.items],

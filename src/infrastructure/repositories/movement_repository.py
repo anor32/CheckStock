@@ -67,8 +67,6 @@ class SqlAlchemyMovementRepository(IMovementRepository):
         return model.to_entity() if model else None
 
     async def list_movements(self, query: ListMovementsDTO) -> tuple[list[Movement], int]:
-        page = query.page
-        page_size = query.page_size
         stmt = select(MovementModel)
         count_stmt = select(func.count()).select_from(MovementModel)
         if query.product_id is not None:
@@ -98,8 +96,8 @@ class SqlAlchemyMovementRepository(IMovementRepository):
         total = int(total_res.scalar_one() or 0)
         stmt = (
             stmt.order_by(MovementModel.created_at.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
+            .offset(query.pagination.offset)
+            .limit(query.pagination.limit)
         )
         res = await self.session.execute(stmt)
         return [m.to_entity() for m in res.scalars().all()], total

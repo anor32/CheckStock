@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+from src.application.pagination import Pagination
 from src.domain.entities import Movement, MovementStatus, MovementType, Product, Stock, Warehouse
 
 
@@ -297,8 +298,7 @@ class WarehouseListItemDTO:
 class ListMovementsQuery:
     """Запрос на вывод истории операций."""
 
-    page: int = 1
-    page_size: int = 20
+    pagination: Pagination = field(default_factory=Pagination)
     product_id: int | None = None
     movement_type: MovementType | None = None
     status: MovementStatus | None = None
@@ -306,28 +306,15 @@ class ListMovementsQuery:
     date_from: datetime | None = None
     date_to: datetime | None = None
 
-    def __post_init__(self) -> None:
-        if self.page < 1:
-            raise ValueError("page must be >= 1")
-        if self.page_size < 1:
-            raise ValueError("page_size must be >= 1")
-
 
 @dataclass(frozen=True)
 class ListStocksQuery:
     """Запрос на вывод списка остатков."""
 
-    page: int = 1
-    page_size: int = 20
+    pagination: Pagination = field(default_factory=Pagination)
     sku: str | None = None
     warehouse_id: int | None = None
     include_deleted_warehouses: bool = True
-
-    def __post_init__(self) -> None:
-        if self.page < 1:
-            raise ValueError("page must be >= 1")
-        if self.page_size < 1:
-            raise ValueError("page_size must be >= 1")
 
 
 @dataclass(frozen=True)

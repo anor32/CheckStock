@@ -13,5 +13,8 @@ class ListMovementsUseCase:
     async def execute(self, query: ListMovementsDTO) -> PaginatedMovementsDTO:
         rows, total = await self.uow.movement_repo.list_movements(query)
         return PaginatedMovementsDTO(
-            items=rows, total=total, page=query.page, page_size=query.page_size
+            items=rows,
+            total=total,
+            page=query.pagination.page,
+            page_size=query.pagination.page_size,
         )

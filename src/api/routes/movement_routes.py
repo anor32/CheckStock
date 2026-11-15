@@ -43,6 +43,7 @@ from src.application.dtos import (
     ListMovementsDTO,
     ReceiveMovementInput,
 )
+from src.application.pagination import Pagination
 from src.application.usecases import (
     FboOutMovementUseCase,
     FboReceiveMovementUseCase,
@@ -64,12 +65,17 @@ async def list_movements(
     uc: Annotated[ListMovementsUseCase, Depends(get_list_movements_use_case)],
     payload: Annotated[ListMovementsRequest, Query()],
 ) -> PaginatedMovementsResponse:
-    data = payload.model_dump()
-    if data.get("date_from"):
-        data["date_from"] = datetime.fromisoformat(data["date_from"])
-    if data.get("date_to"):
-        data["date_to"] = datetime.fromisoformat(data["date_to"])
-    query = ListMovementsDTO(**data)
+    date_from = datetime.fromisoformat(payload.date_from) if payload.date_from else None
+    date_to = datetime.fromisoformat(payload.date_to) if payload.date_to else None
+    query = ListMovementsDTO(
+        pagination=Pagination(page=payload.page, page_size=payload.page_size),
+        product_id=payload.product_id,
+        movement_type=payload.movement_type,
+        status=payload.status,
+        warehouse_id=payload.warehouse_id,
+        date_from=date_from,
+        date_to=date_to,
+    )
     result = await uc.execute(query)
     return PaginatedMovementsResponse(
         items=[MovementResponse.model_validate(i) for i in result.items],

@@ -55,8 +55,8 @@ class SqlAlchemyStockRepository(IStockRepository):
             stmt = stmt.where(*filters)
         stmt = (
             stmt.order_by(ProductModel.id, WarehouseModel.id)
-            .offset((query.page - 1) * query.page_size)
-            .limit(query.page_size)
+            .offset(query.pagination.offset)
+            .limit(query.pagination.limit)
         )
         rows = (await self.session.execute(stmt)).all()
 
