@@ -33,6 +33,24 @@ class SqlAlchemyStockRepository(IStockRepository):
         product_model, stock_model, warehouse_model = row.tuple()
         return product_model.to_entity(), stock_model.to_entity(), warehouse_model.to_entity()
 
+    async def get_by_product_and_warehouse_for_update(
+        self, product_id: int, warehouse_id: int
+    ) -> tuple[Product, Stock, Warehouse]:
+        stmt = (
+            select(ProductModel, StockModel, WarehouseModel)
+            .join(StockModel, StockModel.product_id == ProductModel.id)
+            .join(WarehouseModel, WarehouseModel.id == StockModel.warehouse_id)
+            .where(ProductModel.id == product_id, WarehouseModel.id == warehouse_id)
+            .with_for_update(of=StockModel)
+        )
+        row = (await self.session.execute(stmt)).first()
+        if row is None:
+            raise StockNotFoundError(
+                f"Stock not found for product_id={product_id}, warehouse_id={warehouse_id}"
+            )
+        product_model, stock_model, warehouse_model = row.tuple()
+        return product_model.to_entity(), stock_model.to_entity(), warehouse_model.to_entity()
+
     async def list_stocks(self, query: ListStocksDTO) -> tuple[list[StockListItemDTO], int]:
         filters = self._stock_filters(query)
 
@@ -73,7 +91,8 @@ class SqlAlchemyStockRepository(IStockRepository):
         return stock_model.to_entity()
 
     async def update(self, stock: Stock) -> Stock:
-        stock_model = await self.session.get(StockModel, stock.id)
+        stmt = select(StockModel).where(StockModel.id == stock.id).with_for_update()
+        stock_model = (await self.session.execute(stmt)).scalar_one_or_none()
         if stock_model is None:
             raise StockNotFoundError(f"Stock not found: {stock.id}")
         stock_model.qty_physical = stock.qty_physical

@@ -56,6 +56,11 @@ class IStockRepository(ABC):
     ) -> tuple[Product, Stock, Warehouse]: ...
 
     @abstractmethod
+    async def get_by_product_and_warehouse_for_update(
+        self, product_id: int, warehouse_id: int
+    ) -> tuple[Product, Stock, Warehouse]: ...
+
+    @abstractmethod
     async def list_stocks(self, query: ListStocksDTO) -> tuple[list[StockListItemDTO], int]: ...
 
     @abstractmethod

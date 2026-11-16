@@ -27,7 +27,7 @@ async def test_transfer_movement_returns_existing_for_idempotent_request(
     mock_uow.movement_repo.add_movement.assert_not_called()
     mock_uow.sku_repo.get_by_id.assert_not_called()
     mock_uow.warehouse_repo.get_by_id.assert_not_called()
-    mock_uow.stock_repo.get_by_product_and_warehouse.assert_not_called()
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.assert_not_called()
     mock_uow.stock_repo.create.assert_not_called()
 
 
@@ -43,7 +43,7 @@ async def test_transfer_movement_raises_insufficient_stock_when_available_too_lo
 ) -> None:
     mock_uow.sku_repo.get_by_id.return_value = product
     mock_uow.warehouse_repo.get_by_id.side_effect = [from_warehouse, to_warehouse]
-    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
         product,
         transfer_from_stock_low_available,
         from_warehouse,
@@ -67,7 +67,7 @@ async def test_transfer_movement_updates_stock_and_creates_in_transit_movement(
 ) -> None:
     mock_uow.sku_repo.get_by_id.return_value = product
     mock_uow.warehouse_repo.get_by_id.side_effect = [from_warehouse, to_warehouse]
-    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
         product,
         transfer_from_stock,
         from_warehouse,
@@ -107,7 +107,7 @@ async def test_receive_movement_is_noop_when_already_completed(
     result = await use_case.execute(receive_input_completed)
 
     assert result.status == MovementStatus.COMPLETED
-    mock_uow.stock_repo.get_by_product_and_warehouse.assert_not_called()
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.assert_not_called()
     mock_uow.stock_repo.create.assert_not_called()
     mock_uow.movement_repo.save_movement.assert_not_called()
 
@@ -123,7 +123,7 @@ async def test_receive_movement_updates_destination_stock_and_completes(
 ) -> None:
     mock_uow.movement_repo.get_movement.return_value = receive_in_transit_movement
     mock_uow.warehouse_repo.get_by_id.return_value = destination_warehouse
-    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
         product,
         destination_stock,
         destination_warehouse,
@@ -154,7 +154,7 @@ async def test_fbo_out_movement_returns_existing_for_idempotent_request(
     mock_uow.movement_repo.add_movement.assert_not_called()
     mock_uow.sku_repo.get_by_id.assert_not_called()
     mock_uow.warehouse_repo.get_by_id.assert_not_called()
-    mock_uow.stock_repo.get_by_product_and_warehouse.assert_not_called()
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.assert_not_called()
     mock_uow.stock_repo.create.assert_not_called()
 
 
@@ -164,7 +164,7 @@ async def test_fbo_out_movement_raises_insufficient_stock_when_qty_exceeds_avail
 ) -> None:
     mock_uow.sku_repo.get_by_id.return_value = product
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
-    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
         product,
         stock_no_reserve,
         warehouse,
@@ -188,7 +188,7 @@ async def test_transfer_movement_raises_when_source_warehouse_is_deleted(
     with pytest.raises(EntityNotFoundError):
         await use_case.execute(transfer_input_no_key)
 
-    mock_uow.stock_repo.get_by_product_and_warehouse.assert_not_called()
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.assert_not_called()
     mock_uow.stock_repo.create.assert_not_called()
     mock_uow.movement_repo.add_movement.assert_awaited_once()
 
@@ -206,7 +206,7 @@ async def test_transfer_movement_raises_detailed_error_when_enough_on_other_ware
 ) -> None:
     mock_uow.sku_repo.get_by_id.return_value = product
     mock_uow.warehouse_repo.get_by_id.side_effect = [from_warehouse, to_warehouse]
-    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
         product,
         transfer_from_stock_low_available,
         from_warehouse,
@@ -250,7 +250,7 @@ async def test_fbo_out_movement_raises_detailed_error_when_not_enough_in_total(
 ) -> None:
     mock_uow.sku_repo.get_by_id.return_value = product
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
-    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
         product,
         stock_no_reserve,
         warehouse,
@@ -288,7 +288,11 @@ async def test_fbo_out_movement_rejects_when_available_less_than_requested_due_t
     stock = Stock(id=1, product_id=1, warehouse_id=1, qty_physical=10, qty_reserved_fbs=8)
     mock_uow.sku_repo.get_by_id.return_value = product
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
-    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (product, stock, warehouse)
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
+        product,
+        stock,
+        warehouse,
+    )
     mock_uow.movement_repo.add_movement.side_effect = movement_from_dto
     use_case = FboOutMovementUseCase(uow=mock_uow)
 

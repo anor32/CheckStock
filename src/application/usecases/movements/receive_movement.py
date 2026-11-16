@@ -33,7 +33,7 @@ class ReceiveMovementUseCase:
 
     async def _get_or_create_stock(self, product_id: int, warehouse_id: int) -> Stock:
         try:
-            _, stock, _ = await self.uow.stock_repo.get_by_product_and_warehouse(
+            _, stock, _ = await self.uow.stock_repo.get_by_product_and_warehouse_for_update(
                 product_id, warehouse_id
             )
         except StockNotFoundError:

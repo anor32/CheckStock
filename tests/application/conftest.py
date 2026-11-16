@@ -47,6 +47,7 @@ def mock_uow() -> Mock:
     uow.warehouse_repo.list_all = AsyncMock()
 
     uow.stock_repo.get_by_product_and_warehouse = AsyncMock()
+    uow.stock_repo.get_by_product_and_warehouse_for_update = AsyncMock()
     uow.stock_repo.list_stocks = AsyncMock()
     uow.stock_repo.get_by_id = AsyncMock()
     uow.stock_repo.update = AsyncMock(side_effect=lambda obj: obj)

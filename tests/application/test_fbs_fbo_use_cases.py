@@ -81,7 +81,7 @@ async def test_fbs_reserve_raises_insufficient_stock_when_not_enough_available(
 ) -> None:
     mock_uow.sku_repo.get_by_id.return_value = product
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
-    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
         product,
         stock_low_available,
         warehouse,
@@ -108,7 +108,11 @@ async def test_fbs_reserve_increases_reserved_and_creates_pending_movement(
 ) -> None:
     mock_uow.sku_repo.get_by_id.return_value = product
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
-    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (product, stock, warehouse)
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
+        product,
+        stock,
+        warehouse,
+    )
     mock_uow.movement_repo.add_movement.return_value = fbs_reserve_saved_movement
     use_case = FbsReserveMovementUseCase(uow=mock_uow)
 
@@ -147,7 +151,7 @@ async def test_fbs_ship_updates_stock_and_marks_in_transit_to_customer(
 ) -> None:
     mock_uow.movement_repo.get_movement.return_value = fbs_reserve_pending_movement
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
-    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
         product,
         stock_for_ship,
         warehouse,
@@ -189,7 +193,7 @@ async def test_fbs_cancel_releases_reservation_and_marks_cancelled(
 ) -> None:
     mock_uow.movement_repo.get_movement.return_value = fbs_cancel_pending_movement
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
-    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
         product,
         stock_for_ship,
         warehouse,
@@ -216,7 +220,7 @@ async def test_fbs_reserve_raises_detailed_error_when_enough_on_other_warehouses
 ) -> None:
     mock_uow.sku_repo.get_by_id.return_value = product
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
-    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
         product,
         stock_low_available,
         warehouse,
@@ -264,7 +268,7 @@ async def test_fbs_reserve_raises_detailed_error_when_not_enough_in_total(
 ) -> None:
     mock_uow.sku_repo.get_by_id.return_value = product
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
-    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
         product,
         stock_low_available,
         warehouse,
@@ -309,7 +313,7 @@ async def test_fbs_ship_raises_detailed_error_when_physical_shortage_but_enough_
 ) -> None:
     mock_uow.movement_repo.get_movement.return_value = fbs_reserve_pending_movement
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
-    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
         product,
         stock_insufficient_physical_for_ship,
         warehouse,
@@ -354,7 +358,11 @@ async def test_fbs_ship_is_idempotent_and_does_not_double_debit(
     )
     mock_uow.movement_repo.get_movement.return_value = movement
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
-    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (product, stock, warehouse)
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
+        product,
+        stock,
+        warehouse,
+    )
 
     use_case = FbsShipMovementUseCase(uow=mock_uow)
     ship_input = FbsShipMovementInput(movement_id=70, idempotency_key="ship-key-1")
@@ -388,7 +396,7 @@ async def test_fbs_ship_rejects_cancelled_reserve_without_side_effects(
         await use_case.execute(FbsShipMovementInput(movement_id=80))
 
     mock_uow.warehouse_repo.get_by_id.assert_not_called()
-    mock_uow.stock_repo.get_by_product_and_warehouse.assert_not_called()
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.assert_not_called()
     mock_uow.stock_repo.update.assert_not_called()
     mock_uow.movement_repo.save_movement.assert_not_called()
     assert fbs_cancelled_movement.status == MovementStatus.CANCELLED
@@ -411,7 +419,11 @@ async def test_fbs_ship_rejects_cancelled_reserve_even_if_other_reservation_exis
     )
     mock_uow.movement_repo.get_movement.return_value = movement
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
-    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (product, stock, warehouse)
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
+        product,
+        stock,
+        warehouse,
+    )
     use_case = FbsShipMovementUseCase(uow=mock_uow)
 
     with pytest.raises(InvalidMovementError):
@@ -444,7 +456,7 @@ async def test_fbs_cancel_rejects_non_pending_non_cancelled_reserve_without_side
         await use_case.execute(FbsCancelMovementInput(movement_id=82))
 
     mock_uow.warehouse_repo.get_by_id.assert_not_called()
-    mock_uow.stock_repo.get_by_product_and_warehouse.assert_not_called()
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.assert_not_called()
     mock_uow.stock_repo.update.assert_not_called()
     mock_uow.movement_repo.save_movement.assert_not_called()
     assert movement.status == MovementStatus.IN_TRANSIT

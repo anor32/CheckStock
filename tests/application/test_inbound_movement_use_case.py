@@ -23,7 +23,7 @@ async def test_inbound_movement_returns_existing_for_idempotent_request(
     mock_uow.movement_repo.add_movement.assert_not_called()
     mock_uow.sku_repo.get_by_id.assert_not_called()
     mock_uow.warehouse_repo.get_by_id.assert_not_called()
-    mock_uow.stock_repo.get_by_product_and_warehouse.assert_not_called()
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.assert_not_called()
     mock_uow.stock_repo.create.assert_not_called()
     mock_uow.stock_repo.update.assert_not_called()
 
@@ -65,7 +65,7 @@ async def test_inbound_movement_creates_movement_and_updates_stock(
 ) -> None:
     mock_uow.sku_repo.get_by_id.return_value = product
     mock_uow.warehouse_repo.get_by_id.return_value = inbound_warehouse
-    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
         product,
         inbound_stock,
         inbound_warehouse,
@@ -98,6 +98,6 @@ async def test_inbound_movement_raises_when_warehouse_is_deleted(
     with pytest.raises(EntityNotFoundError):
         await use_case.execute(inbound_input_no_key)
 
-    mock_uow.stock_repo.get_by_product_and_warehouse.assert_not_called()
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.assert_not_called()
     mock_uow.stock_repo.create.assert_not_called()
     mock_uow.movement_repo.add_movement.assert_awaited_once()
