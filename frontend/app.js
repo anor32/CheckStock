@@ -591,7 +591,11 @@ function bindEvents() {
         setGlobalMessage(`Резерв #${id} отправлен (${qty} шт.).`, "success");
         await Promise.all([loadInTransitItems(), loadStocks(), loadMovements(), loadFbsReserves()]);
       } catch (err) {
-        setGlobalMessage(`Ошибка: ${err.message}`, "error");
+        if (err.status === 409) {
+          setGlobalMessage(`Операция уже выполнена (резерв #${id}).`, "success");
+        } else {
+          setGlobalMessage(`Ошибка: ${err.message}`, "error");
+        }
       } finally {
         btn.disabled = false;
       }
@@ -872,7 +876,11 @@ function bindEvents() {
         showFbsResult(`Резерв #${id} отправлен (${qty} шт.).`, "success");
         await Promise.all([loadFbsReserves(), loadStocks(), loadMovements()]);
       } catch (err) {
-        showFbsResult(`Ошибка ${err.status || ""}: ${err.message}`.trim(), "error");
+        if (err.status === 409) {
+          showFbsResult(`Операция уже выполнена (резерв #${id}).`, "success");
+        } else {
+          showFbsResult(`Ошибка ${err.status || ""}: ${err.message}`.trim(), "error");
+        }
       } finally {
         btn.disabled = false;
       }
