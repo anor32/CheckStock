@@ -25,6 +25,9 @@ class Stock:
                 f"Недостаточно доступного остатка: доступно {self.qty_available}, запрошено {qty}."
             )
 
+    def ensure_available(self, qty: int) -> None:
+        self.ensure_reservable(qty)
+
     def ensure_consumable(self, qty: int) -> None:
         if self.qty_physical < qty:
             raise InsufficientStockError(

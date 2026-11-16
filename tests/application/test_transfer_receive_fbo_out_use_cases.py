@@ -3,10 +3,11 @@ from __future__ import annotations
 import pytest
 
 from src.api.schemas import ErrorResponse
+from src.application.dtos import CreateFboOutMovementInput
 from src.application.usecases.movements.fbo_out_movement import FboOutMovementUseCase
 from src.application.usecases.movements.receive_movement import ReceiveMovementUseCase
 from src.application.usecases.movements.transfer_movement import TransferMovementUseCase
-from src.domain.entities import MovementStatus, MovementType
+from src.domain.entities import MovementStatus, MovementType, Stock
 from src.domain.exceptions import EntityNotFoundError, InsufficientStockError
 
 
@@ -265,7 +266,7 @@ async def test_fbo_out_movement_raises_detailed_error_when_not_enough_in_total(
 
     info = exc.value.info
     assert info is not None
-    assert info.available == stock_no_reserve.qty_physical
+    assert info.available == stock_no_reserve.qty_available
     assert info.requested == fbo_out_input_no_key.qty
     assert info.other_warehouses == [other_warehouse_availability_empty]
     assert info.other_total_available == 0
@@ -278,3 +279,30 @@ async def test_fbo_out_movement_raises_detailed_error_when_not_enough_in_total(
         "Недостаточно остатка на выбранном складе: доступно 1, запрошено 2. "
         "На других активных складах доступно суммарно 0. Этого недостаточно для операции."
     )
+
+
+@pytest.mark.asyncio
+async def test_fbo_out_movement_rejects_when_available_less_than_requested_due_to_reserve(
+    mock_uow, product, warehouse, movement_from_dto
+) -> None:
+    stock = Stock(id=1, product_id=1, warehouse_id=1, qty_physical=10, qty_reserved_fbs=8)
+    mock_uow.sku_repo.get_by_id.return_value = product
+    mock_uow.warehouse_repo.get_by_id.return_value = warehouse
+    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (product, stock, warehouse)
+    mock_uow.movement_repo.add_movement.side_effect = movement_from_dto
+    use_case = FboOutMovementUseCase(uow=mock_uow)
+
+    with pytest.raises(InsufficientStockError) as exc:
+        await use_case.execute(
+            CreateFboOutMovementInput(
+                product_id=1, from_warehouse_id=1, qty=3, idempotency_key=None
+            )
+        )
+
+    info = exc.value.info
+    assert info is not None
+    assert info.available == 2
+    assert info.requested == 3
+    assert stock.qty_physical == 10
+    assert stock.qty_reserved_fbs == 8
+    mock_uow.stock_repo.update.assert_not_called()

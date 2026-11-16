@@ -23,7 +23,7 @@ class FboOutMovementUseCase:
         from_stock = await self._get_or_create_stock(
             input_data.product_id, input_data.from_warehouse_id
         )
-        await self._ensure_consumable(from_stock, input_data)
+        await self._ensure_sufficient_available(from_stock, input_data)
         from_stock.consume(input_data.qty)
         await self.uow.stock_repo.update(from_stock)
         return movement
@@ -51,15 +51,17 @@ class FboOutMovementUseCase:
         else:
             return stock
 
-    async def _ensure_consumable(self, stock: Stock, input_data: CreateFboOutMovementInput) -> None:
+    async def _ensure_sufficient_available(
+        self, stock: Stock, input_data: CreateFboOutMovementInput
+    ) -> None:
         try:
-            stock.ensure_consumable(input_data.qty)
+            stock.ensure_available(input_data.qty)
         except InsufficientStockError as err:
             other_warehouses = await self.uow.stock_repo.list_other_warehouses_availability(
                 input_data.product_id, input_data.from_warehouse_id
             )
             info = InsufficientStockInfo.build(
-                available=stock.qty_physical,
+                available=stock.qty_available,
                 requested=input_data.qty,
                 other_warehouses=other_warehouses,
             )
