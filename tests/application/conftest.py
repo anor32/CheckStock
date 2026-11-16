@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, Mock
@@ -26,6 +27,11 @@ from src.domain.entities import (
     Warehouse,
     WarehouseStockAvailability,
 )
+
+
+@asynccontextmanager
+async def _mock_nested_transaction() -> AsyncIterator[None]:
+    yield
 
 
 @pytest.fixture
@@ -63,6 +69,7 @@ def mock_uow() -> Mock:
 
     uow.commit = AsyncMock()
     uow.rollback = AsyncMock()
+    uow.begin_nested = Mock(side_effect=_mock_nested_transaction)
     return uow
 
 

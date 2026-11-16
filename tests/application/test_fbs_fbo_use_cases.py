@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from src.api.schemas import ErrorResponse
 from src.application.dtos import FbsCancelMovementInput, FbsShipMovementInput
@@ -122,6 +123,38 @@ async def test_fbs_reserve_increases_reserved_and_creates_pending_movement(
         fbs_reserve_input_new.idempotency_key
     )
     mock_uow.stock_repo.update.assert_awaited_once_with(stock)
+
+
+@pytest.mark.asyncio
+async def test_fbs_reserve_returns_existing_on_idempotency_key_conflict(
+    mock_uow,
+    product,
+    warehouse,
+    stock,
+    fbs_reserve_input_new,
+    fbs_reserve_existing_movement,
+) -> None:
+    mock_uow.sku_repo.get_by_id.return_value = product
+    mock_uow.warehouse_repo.get_by_id.return_value = warehouse
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
+        product,
+        stock,
+        warehouse,
+    )
+    mock_uow.movement_repo.add_movement.side_effect = IntegrityError(
+        "stmt", "params", Exception("dup")
+    )
+    mock_uow.movement_repo.get_by_idempotency_key.side_effect = [
+        None,
+        fbs_reserve_existing_movement,
+    ]
+    use_case = FbsReserveMovementUseCase(uow=mock_uow)
+
+    result = await use_case.execute(fbs_reserve_input_new)
+
+    assert result is fbs_reserve_existing_movement
+    assert stock.qty_reserved_fbs == 1
+    mock_uow.stock_repo.update.assert_not_called()
 
 
 @pytest.mark.asyncio

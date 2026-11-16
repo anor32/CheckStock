@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from sqlalchemy.exc import IntegrityError
+
 from src.application.dtos import CreateFbsReserveMovementInput, CreateStockDTO
 from src.domain.entities import Movement, Stock, Warehouse
 from src.domain.exceptions import InsufficientStockError, StockNotFoundError
@@ -18,7 +20,17 @@ class FbsReserveMovementUseCase:
         if existing is not None:
             return existing
 
-        movement = await self.uow.movement_repo.add_movement(input_data.to_create_movement_dto())
+        try:
+            async with self.uow.begin_nested():
+                movement = await self.uow.movement_repo.add_movement(
+                    input_data.to_create_movement_dto()
+                )
+        except IntegrityError:
+            existing = await self._get_existing_movement(input_data.idempotency_key)
+            if existing is not None:
+                return existing
+            raise
+
         await self._ensure_entities(input_data.product_id, input_data.warehouse_id)
         stock = await self._get_or_create_stock(input_data.product_id, input_data.warehouse_id)
         await self._ensure_reservable(stock, input_data)
@@ -46,8 +58,7 @@ class FbsReserveMovementUseCase:
             return await self.uow.stock_repo.create(
                 CreateStockDTO(product_id=product_id, warehouse_id=warehouse_id)
             )
-        else:
-            return stock
+        return stock
 
     async def _ensure_reservable(
         self, stock: Stock, input_data: CreateFbsReserveMovementInput

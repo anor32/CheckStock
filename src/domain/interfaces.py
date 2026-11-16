@@ -118,6 +118,9 @@ class IUnitOfWork(ABC):
     @abstractmethod
     async def rollback(self) -> None: ...
 
+    @abstractmethod
+    def begin_nested(self) -> Any: ...
+
 
 # Backward-compatible aliases
 IUoW = IUnitOfWork

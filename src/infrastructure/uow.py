@@ -44,3 +44,6 @@ class SqlAlchemyUnitOfWork(IUnitOfWork):
 
     async def rollback(self) -> None:
         await self.session.rollback()
+
+    def begin_nested(self) -> Any:
+        return self.session.begin_nested()

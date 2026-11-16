@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from src.application.usecases.movements.inbound_movement import InboundMovementUseCase
 from src.domain.entities import MovementStatus, MovementType
@@ -101,3 +102,27 @@ async def test_inbound_movement_raises_when_warehouse_is_deleted(
     mock_uow.stock_repo.get_by_product_and_warehouse_for_update.assert_not_called()
     mock_uow.stock_repo.create.assert_not_called()
     mock_uow.movement_repo.add_movement.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_inbound_movement_returns_existing_on_idempotency_key_conflict(
+    mock_uow, product, inbound_warehouse, inbound_stock, inbound_input_new, inbound_saved_movement
+) -> None:
+    mock_uow.sku_repo.get_by_id.return_value = product
+    mock_uow.warehouse_repo.get_by_id.return_value = inbound_warehouse
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
+        product,
+        inbound_stock,
+        inbound_warehouse,
+    )
+    mock_uow.movement_repo.add_movement.side_effect = IntegrityError(
+        "stmt", "params", Exception("dup")
+    )
+    mock_uow.movement_repo.get_by_idempotency_key.side_effect = [None, inbound_saved_movement]
+    use_case = InboundMovementUseCase(uow=mock_uow)
+
+    result = await use_case.execute(inbound_input_new)
+
+    assert result is inbound_saved_movement
+    mock_uow.stock_repo.update.assert_not_called()
+    assert mock_uow.movement_repo.get_by_idempotency_key.await_count == 2
