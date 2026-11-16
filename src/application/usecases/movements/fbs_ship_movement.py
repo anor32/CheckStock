@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from src.application.dtos import CreateStockDTO, FbsShipMovementInput
 from src.domain.entities import Movement, MovementStatus, MovementType, Stock, Warehouse
-from src.domain.exceptions import InsufficientStockError, StockNotFoundError
+from src.domain.exceptions import (
+    DuplicateIdempotencyKeyError,
+    InsufficientStockError,
+    StockNotFoundError,
+)
 from src.domain.interfaces import IUnitOfWork
 
 
@@ -15,6 +19,13 @@ class FbsShipMovementUseCase:
     async def execute(self, input_data: FbsShipMovementInput) -> Movement:
         movement = await self.uow.movement_repo.get_movement(input_data.movement_id)
         if movement.is_fbs_ship_in_transit():
+            if (
+                input_data.idempotency_key is not None
+                and movement.idempotency_key == input_data.idempotency_key
+            ):
+                raise DuplicateIdempotencyKeyError(
+                    f"Duplicate idempotency key: {input_data.idempotency_key}"
+                )
             return movement
 
         movement.ensure_type(MovementType.FBS_RESERVE)

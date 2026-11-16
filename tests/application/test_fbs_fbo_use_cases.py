@@ -3,12 +3,13 @@ from __future__ import annotations
 import pytest
 
 from src.api.schemas import ErrorResponse
+from src.application.dtos import FbsShipMovementInput
 from src.application.usecases.movements.fbo_receive_movement import FboReceiveMovementUseCase
 from src.application.usecases.movements.fbs_cancel_movement import FbsCancelMovementUseCase
 from src.application.usecases.movements.fbs_reserve_movement import FbsReserveMovementUseCase
 from src.application.usecases.movements.fbs_ship_movement import FbsShipMovementUseCase
 from src.domain.entities import MovementStatus, MovementType
-from src.domain.exceptions import InsufficientStockError
+from src.domain.exceptions import DuplicateIdempotencyKeyError, InsufficientStockError
 
 
 @pytest.mark.asyncio
@@ -116,16 +117,16 @@ async def test_fbs_reserve_increases_reserved_and_creates_pending_movement(
 
 
 @pytest.mark.asyncio
-async def test_fbs_ship_is_noop_when_already_in_transit_to_customer(
-    mock_uow, fbs_ship_in_transit_movement, fbs_ship_input
+async def test_fbs_ship_raises_duplicate_idempotency_key_when_already_in_transit(
+    mock_uow, fbs_ship_in_transit_movement
 ) -> None:
+    fbs_ship_in_transit_movement.idempotency_key = "ship-key-1"
     mock_uow.movement_repo.get_movement.return_value = fbs_ship_in_transit_movement
     use_case = FbsShipMovementUseCase(uow=mock_uow)
 
-    result = await use_case.execute(fbs_ship_input)
+    with pytest.raises(DuplicateIdempotencyKeyError):
+        await use_case.execute(FbsShipMovementInput(movement_id=70, idempotency_key="ship-key-1"))
 
-    assert result.status == MovementStatus.IN_TRANSIT
-    assert result.type == MovementType.FBS_SHIP
     mock_uow.movement_repo.save_movement.assert_not_called()
 
 

@@ -73,6 +73,14 @@ function generateIdempotencyKey() {
   return `idem-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function acquireIdempotencyKey(scope) {
+  const key = scope && scope.dataset ? scope.dataset.idempotencyKey : null;
+  if (key) return key;
+  const generated = generateIdempotencyKey();
+  if (scope && scope.dataset) scope.dataset.idempotencyKey = generated;
+  return generated;
+}
+
 function movementTypeLabel(type) {
   return MOVEMENT_TYPE_LABELS[type] || (type ? String(type) : "—");
 }
@@ -554,7 +562,7 @@ function bindEvents() {
           : `/api/v1/movements/${id}/receive`;
         await apiRequest(path, {
           method: "POST",
-          body: { idempotency_key: generateIdempotencyKey() },
+          body: { idempotency_key: acquireIdempotencyKey(btn) },
         });
         setGlobalMessage(
           isMarketplace
@@ -578,7 +586,7 @@ function bindEvents() {
       try {
         await apiRequest(`/api/v1/movements/${id}/fbs-ship`, {
           method: "POST",
-          body: { idempotency_key: generateIdempotencyKey() },
+          body: { idempotency_key: acquireIdempotencyKey(btn) },
         });
         setGlobalMessage(`Резерв #${id} отправлен (${qty} шт.).`, "success");
         await Promise.all([loadInTransitItems(), loadStocks(), loadMovements(), loadFbsReserves()]);
@@ -597,7 +605,7 @@ function bindEvents() {
       try {
         await apiRequest(`/api/v1/movements/${id}/fbs-cancel`, {
           method: "POST",
-          body: { idempotency_key: generateIdempotencyKey() },
+          body: { idempotency_key: acquireIdempotencyKey(btn) },
         });
         setGlobalMessage(`Резерв #${id} отменён.`, "success");
         await Promise.all([loadInTransitItems(), loadStocks(), loadMovements(), loadFbsReserves()]);
@@ -684,7 +692,7 @@ function bindEvents() {
       product_id: Number(fd.get("product_id")),
       warehouse_id: Number(fd.get("warehouse_id")),
       qty: Number(fd.get("qty")),
-      idempotency_key: generateIdempotencyKey(),
+      idempotency_key: acquireIdempotencyKey(form),
     };
     setSubmitting(form, true);
     showReceiptResult("Отправка…", "success");
@@ -692,6 +700,7 @@ function bindEvents() {
       const res = await apiRequest("/api/v1/movements/inbound", { method: "POST", body });
       showReceiptResult(`Успешно: приход создан (движение #${res.id}, статус: ${movementStatusLabel(res.status)}).`, "success");
       form.reset();
+      delete form.dataset.idempotencyKey;
       await Promise.all([loadReferenceData(), loadStocks(), loadInTransitItems()]);
     } catch (err) {
       showReceiptResult(`Ошибка ${err.status || ""}: ${err.message}`.trim(), "error");
@@ -716,7 +725,7 @@ function bindEvents() {
       from_warehouse_id: fromId,
       to_warehouse_id: toId,
       qty: Number(fd.get("qty")),
-      idempotency_key: generateIdempotencyKey(),
+      idempotency_key: acquireIdempotencyKey(form),
     };
     setSubmitting(form, true);
     showReceiptResult("Отправка…", "success");
@@ -724,6 +733,7 @@ function bindEvents() {
       const res = await apiRequest("/api/v1/movements/transfer", { method: "POST", body });
       showReceiptResult(`Успешно: перемещение создано (движение #${res.id}, статус: ${movementStatusLabel(res.status)}).`, "success");
       form.reset();
+      delete form.dataset.idempotencyKey;
       await loadReceiveCandidates();
     } catch (err) {
       showReceiptResult(`Ошибка ${err.status || ""}: ${err.message}`.trim(), "error");
@@ -747,10 +757,11 @@ function bindEvents() {
     try {
       const res = await apiRequest(`/api/v1/movements/${movementId}/receive`, {
         method: "POST",
-        body: { idempotency_key: generateIdempotencyKey() },
+        body: { idempotency_key: acquireIdempotencyKey(form) },
       });
       showReceiptResult(`Успешно: перемещение принято (движение #${res.id}, статус: ${movementStatusLabel(res.status)}).`, "success");
       form.reset();
+      delete form.dataset.idempotencyKey;
       await Promise.all([loadReceiveCandidates(), loadStocks()]);
     } catch (err) {
       showReceiptResult(`Ошибка ${err.status || ""}: ${err.message}`.trim(), "error");
@@ -768,7 +779,7 @@ function bindEvents() {
       product_id: Number(fd.get("product_id")),
       from_warehouse_id: Number(fd.get("from_warehouse_id")),
       qty: Number(fd.get("qty")),
-      idempotency_key: generateIdempotencyKey(),
+      idempotency_key: acquireIdempotencyKey(form),
     };
     setSubmitting(form, true);
     showReceiptResult("Отправка…", "success");
@@ -776,6 +787,7 @@ function bindEvents() {
       const res = await apiRequest("/api/v1/movements/fbo-out", { method: "POST", body });
       showReceiptResult(`Успешно: отправка на маркетплейс создана (движение #${res.id}, статус: ${movementStatusLabel(res.status)}).`, "success");
       form.reset();
+      delete form.dataset.idempotencyKey;
       await Promise.all([loadStocks(), loadInTransitItems()]);
     } catch (err) {
       showReceiptResult(`Ошибка ${err.status || ""}: ${err.message}`.trim(), "error");
@@ -823,7 +835,7 @@ function bindEvents() {
       product_id: Number(fd.get("product_id")),
       warehouse_id: Number(fd.get("warehouse_id")),
       qty: Number(fd.get("qty")),
-      idempotency_key: generateIdempotencyKey(),
+      idempotency_key: acquireIdempotencyKey(form),
     };
     setSubmitting(form, true);
     showFbsResult("Отправка…", "success");
@@ -831,6 +843,7 @@ function bindEvents() {
       const res = await apiRequest("/api/v1/movements/fbs-reserve", { method: "POST", body });
       showFbsResult(`Успешно: резерв создан (движение #${res.id}, кол-во: ${res.qty}, статус: ${movementStatusLabel(res.status)}).`, "success");
       form.reset();
+      delete form.dataset.idempotencyKey;
       await Promise.all([loadFbsReserves(), loadStocks()]);
     } catch (err) {
       showFbsResult(`Ошибка ${err.status || ""}: ${err.message}`.trim(), "error");
@@ -854,7 +867,7 @@ function bindEvents() {
       try {
         await apiRequest(`/api/v1/movements/${id}/fbs-ship`, {
           method: "POST",
-          body: { idempotency_key: generateIdempotencyKey() },
+          body: { idempotency_key: acquireIdempotencyKey(btn) },
         });
         showFbsResult(`Резерв #${id} отправлен (${qty} шт.).`, "success");
         await Promise.all([loadFbsReserves(), loadStocks(), loadMovements()]);
@@ -870,7 +883,7 @@ function bindEvents() {
       try {
         await apiRequest(`/api/v1/movements/${id}/fbs-cancel`, {
           method: "POST",
-          body: { idempotency_key: generateIdempotencyKey() },
+          body: { idempotency_key: acquireIdempotencyKey(btn) },
         });
         showFbsResult(`Резерв #${id} отменён.`, "success");
         await Promise.all([loadFbsReserves(), loadStocks(), loadMovements()]);
