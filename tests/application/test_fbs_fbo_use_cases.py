@@ -5,13 +5,17 @@ from datetime import UTC, datetime
 import pytest
 
 from src.api.schemas import ErrorResponse
-from src.application.dtos import FbsShipMovementInput
+from src.application.dtos import FbsCancelMovementInput, FbsShipMovementInput
 from src.application.usecases.movements.fbo_receive_movement import FboReceiveMovementUseCase
 from src.application.usecases.movements.fbs_cancel_movement import FbsCancelMovementUseCase
 from src.application.usecases.movements.fbs_reserve_movement import FbsReserveMovementUseCase
 from src.application.usecases.movements.fbs_ship_movement import FbsShipMovementUseCase
 from src.domain.entities import Movement, MovementStatus, MovementType, Stock
-from src.domain.exceptions import DuplicateIdempotencyKeyError, InsufficientStockError
+from src.domain.exceptions import (
+    DuplicateIdempotencyKeyError,
+    InsufficientStockError,
+    InvalidMovementError,
+)
 
 
 @pytest.mark.asyncio
@@ -371,3 +375,76 @@ async def test_fbs_ship_is_idempotent_and_does_not_double_debit(
     assert stock.qty_reserved_fbs == 2
     assert mock_uow.stock_repo.update.await_count == 1
     assert mock_uow.movement_repo.save_movement.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_fbs_ship_rejects_cancelled_reserve_without_side_effects(
+    mock_uow, fbs_cancelled_movement
+) -> None:
+    mock_uow.movement_repo.get_movement.return_value = fbs_cancelled_movement
+    use_case = FbsShipMovementUseCase(uow=mock_uow)
+
+    with pytest.raises(InvalidMovementError):
+        await use_case.execute(FbsShipMovementInput(movement_id=80))
+
+    mock_uow.warehouse_repo.get_by_id.assert_not_called()
+    mock_uow.stock_repo.get_by_product_and_warehouse.assert_not_called()
+    mock_uow.stock_repo.update.assert_not_called()
+    mock_uow.movement_repo.save_movement.assert_not_called()
+    assert fbs_cancelled_movement.status == MovementStatus.CANCELLED
+    assert fbs_cancelled_movement.type == MovementType.FBS_RESERVE
+
+
+@pytest.mark.asyncio
+async def test_fbs_ship_rejects_cancelled_reserve_even_if_other_reservation_exists(
+    mock_uow, product, warehouse
+) -> None:
+    stock = Stock(id=1, product_id=1, warehouse_id=1, qty_physical=10, qty_reserved_fbs=4)
+    movement = Movement(
+        id=81,
+        product_id=1,
+        type=MovementType.FBS_RESERVE,
+        qty=2,
+        from_warehouse_id=1,
+        status=MovementStatus.CANCELLED,
+        created_at=datetime.now(UTC),
+    )
+    mock_uow.movement_repo.get_movement.return_value = movement
+    mock_uow.warehouse_repo.get_by_id.return_value = warehouse
+    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (product, stock, warehouse)
+    use_case = FbsShipMovementUseCase(uow=mock_uow)
+
+    with pytest.raises(InvalidMovementError):
+        await use_case.execute(FbsShipMovementInput(movement_id=81))
+
+    assert stock.qty_physical == 10
+    assert stock.qty_reserved_fbs == 4
+    mock_uow.stock_repo.update.assert_not_called()
+    mock_uow.movement_repo.save_movement.assert_not_called()
+    assert movement.status == MovementStatus.CANCELLED
+
+
+@pytest.mark.asyncio
+async def test_fbs_cancel_rejects_non_pending_non_cancelled_reserve_without_side_effects(
+    mock_uow,
+) -> None:
+    movement = Movement(
+        id=82,
+        product_id=1,
+        type=MovementType.FBS_RESERVE,
+        qty=2,
+        from_warehouse_id=1,
+        status=MovementStatus.IN_TRANSIT,
+        created_at=datetime.now(UTC),
+    )
+    mock_uow.movement_repo.get_movement.return_value = movement
+    use_case = FbsCancelMovementUseCase(uow=mock_uow)
+
+    with pytest.raises(InvalidMovementError):
+        await use_case.execute(FbsCancelMovementInput(movement_id=82))
+
+    mock_uow.warehouse_repo.get_by_id.assert_not_called()
+    mock_uow.stock_repo.get_by_product_and_warehouse.assert_not_called()
+    mock_uow.stock_repo.update.assert_not_called()
+    mock_uow.movement_repo.save_movement.assert_not_called()
+    assert movement.status == MovementStatus.IN_TRANSIT

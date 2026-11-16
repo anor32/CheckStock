@@ -53,6 +53,13 @@ class Movement:
         if self.type != expected:
             raise EntityNotFoundError(f"Movement of type {expected.value} not found")
 
+    def ensure_fbs_reserve_pending(self) -> None:
+        if self.type != MovementType.FBS_RESERVE or self.status != MovementStatus.PENDING:
+            raise InvalidMovementError(
+                f"FBS reserve movement must be pending for this operation: "
+                f"type={self.type.value}, status={self.status.value}"
+            )
+
     def ensure_from_warehouse_id(self) -> int:
         if self.from_warehouse_id is None:
             raise EntityNotFoundError("Warehouse not found")

@@ -17,6 +17,7 @@ class FbsCancelMovementUseCase:
         movement.ensure_type(MovementType.FBS_RESERVE)
         if movement.is_cancelled():
             return movement
+        movement.ensure_fbs_reserve_pending()
 
         from_warehouse_id = movement.ensure_from_warehouse_id()
         await self._ensure_active_warehouse(from_warehouse_id)
