@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 
 from src.api.schemas import ErrorResponse
@@ -8,7 +10,7 @@ from src.application.usecases.movements.fbo_receive_movement import FboReceiveMo
 from src.application.usecases.movements.fbs_cancel_movement import FbsCancelMovementUseCase
 from src.application.usecases.movements.fbs_reserve_movement import FbsReserveMovementUseCase
 from src.application.usecases.movements.fbs_ship_movement import FbsShipMovementUseCase
-from src.domain.entities import MovementStatus, MovementType
+from src.domain.entities import Movement, MovementStatus, MovementType, Stock
 from src.domain.exceptions import DuplicateIdempotencyKeyError, InsufficientStockError
 
 
@@ -153,7 +155,7 @@ async def test_fbs_ship_updates_stock_and_marks_in_transit_to_customer(
     assert stock_for_ship.qty_physical == 3
     assert stock_for_ship.qty_reserved_fbs == 0
     assert result.status == MovementStatus.IN_TRANSIT
-    assert result.type == MovementType.FBS_RESERVE
+    assert result.type == MovementType.FBS_SHIP
     assert result.completed_at is None
     mock_uow.stock_repo.update.assert_awaited_once_with(stock_for_ship)
     mock_uow.movement_repo.save_movement.assert_awaited_once()
@@ -330,3 +332,42 @@ async def test_fbs_ship_raises_detailed_error_when_physical_shortage_but_enough_
         "На других активных складах доступно суммарно 5. Этого достаточно для операции. "
         "Склады-кандидаты: Other Warehouse (id=2): доступно 5."
     )
+
+
+@pytest.mark.asyncio
+async def test_fbs_ship_is_idempotent_and_does_not_double_debit(
+    mock_uow, product, warehouse
+) -> None:
+    stock = Stock(id=1, product_id=1, warehouse_id=1, qty_physical=10, qty_reserved_fbs=4)
+    movement = Movement(
+        id=70,
+        product_id=1,
+        type=MovementType.FBS_RESERVE,
+        qty=2,
+        from_warehouse_id=1,
+        status=MovementStatus.PENDING,
+        created_at=datetime.now(UTC),
+    )
+    mock_uow.movement_repo.get_movement.return_value = movement
+    mock_uow.warehouse_repo.get_by_id.return_value = warehouse
+    mock_uow.stock_repo.get_by_product_and_warehouse.return_value = (product, stock, warehouse)
+
+    use_case = FbsShipMovementUseCase(uow=mock_uow)
+    ship_input = FbsShipMovementInput(movement_id=70, idempotency_key="ship-key-1")
+
+    result = await use_case.execute(ship_input)
+
+    assert stock.qty_physical == 8
+    assert stock.qty_reserved_fbs == 2
+    assert result.type == MovementType.FBS_SHIP
+    assert result.status == MovementStatus.IN_TRANSIT
+    assert mock_uow.stock_repo.update.await_count == 1
+    assert mock_uow.movement_repo.save_movement.await_count == 1
+
+    with pytest.raises(DuplicateIdempotencyKeyError):
+        await use_case.execute(ship_input)
+
+    assert stock.qty_physical == 8
+    assert stock.qty_reserved_fbs == 2
+    assert mock_uow.stock_repo.update.await_count == 1
+    assert mock_uow.movement_repo.save_movement.await_count == 1

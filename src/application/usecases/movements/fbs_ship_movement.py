@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.application.dtos import CreateStockDTO, FbsShipMovementInput
-from src.domain.entities import Movement, MovementStatus, MovementType, Stock, Warehouse
+from src.domain.entities import Movement, MovementType, Stock, Warehouse
 from src.domain.exceptions import (
     DuplicateIdempotencyKeyError,
     InsufficientStockError,
@@ -40,11 +40,7 @@ class FbsShipMovementUseCase:
         stock.release_reservation(movement.qty)
         await self.uow.stock_repo.update(stock)
 
-        movement.complete(
-            status=MovementStatus.IN_TRANSIT,
-            idempotency_key=input_data.idempotency_key,
-            set_completed_at_now=False,
-        )
+        movement.ship_fbs(idempotency_key=input_data.idempotency_key)
         return await self.uow.movement_repo.save_movement(movement)
 
     async def _get_active_warehouse(self, warehouse_id: int) -> Warehouse:
