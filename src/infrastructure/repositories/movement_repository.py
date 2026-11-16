@@ -9,6 +9,7 @@ from src.application.dtos import CreateMovementDTO, ListMovementsDTO
 from src.domain.entities import Movement
 from src.domain.exceptions import EntityNotFoundError
 from src.domain.interfaces import IMovementRepository
+from src.domain.value_objects.movement import MovementStatus
 from src.infrastructure.models import MovementModel
 
 
@@ -101,3 +102,21 @@ class SqlAlchemyMovementRepository(IMovementRepository):
         )
         res = await self.session.execute(stmt)
         return [m.to_entity() for m in res.scalars().all()], total
+
+    async def has_unfinished_for_warehouse(self, warehouse_id: int) -> bool:
+        stmt = (
+            select(MovementModel.id)
+            .where(
+                or_(
+                    MovementModel.from_warehouse_id == warehouse_id,
+                    MovementModel.to_warehouse_id == warehouse_id,
+                ),
+                MovementModel.status.in_([
+                    MovementStatus.PENDING.value,
+                    MovementStatus.IN_TRANSIT.value,
+                ]),
+            )
+            .limit(1)
+        )
+        res = await self.session.execute(stmt)
+        return res.scalar_one_or_none() is not None

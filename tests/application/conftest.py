@@ -59,6 +59,7 @@ def mock_uow() -> Mock:
     uow.movement_repo.get_movement = AsyncMock()
     uow.movement_repo.get_by_idempotency_key = AsyncMock(return_value=None)
     uow.movement_repo.list_movements = AsyncMock()
+    uow.movement_repo.has_unfinished_for_warehouse = AsyncMock(return_value=False)
 
     uow.commit = AsyncMock()
     uow.rollback = AsyncMock()

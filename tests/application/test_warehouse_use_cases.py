@@ -5,7 +5,7 @@ import pytest
 from src.application.usecases.warehouses.create_warehouse import CreateWarehouseUseCase
 from src.application.usecases.warehouses.delete_warehouse import DeleteWarehouseUseCase
 from src.application.usecases.warehouses.update_warehouse import UpdateWarehouseUseCase
-from src.domain.exceptions import EntityNotFoundError
+from src.domain.exceptions import EntityNotFoundError, WarehouseHasActiveMovementsError
 
 
 @pytest.mark.asyncio
@@ -60,6 +60,7 @@ async def test_delete_warehouse_soft_deletes_once_for_repeated_calls(mock_uow, w
     warehouse.is_deleted = False
     warehouse.deleted_at = None
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
+    mock_uow.movement_repo.has_unfinished_for_warehouse.return_value = False
     use_case = DeleteWarehouseUseCase(uow=mock_uow)
 
     first = await use_case.execute(warehouse.id)
@@ -69,6 +70,7 @@ async def test_delete_warehouse_soft_deletes_once_for_repeated_calls(mock_uow, w
     assert second.is_deleted is True
     assert warehouse.deleted_at is not None
     assert mock_uow.warehouse_repo.update.await_count == 1
+    mock_uow.movement_repo.has_unfinished_for_warehouse.assert_awaited_once_with(1)
 
 
 @pytest.mark.asyncio
@@ -78,3 +80,35 @@ async def test_delete_warehouse_raises_entity_not_found_when_missing(mock_uow) -
 
     with pytest.raises(EntityNotFoundError):
         await use_case.execute(999)
+
+
+@pytest.mark.asyncio
+async def test_delete_warehouse_raises_when_unfinished_movements_exist(mock_uow, warehouse) -> None:
+    warehouse.id = 1
+    warehouse.is_deleted = False
+    mock_uow.warehouse_repo.get_by_id.return_value = warehouse
+    mock_uow.movement_repo.has_unfinished_for_warehouse.return_value = True
+    use_case = DeleteWarehouseUseCase(uow=mock_uow)
+
+    with pytest.raises(WarehouseHasActiveMovementsError):
+        await use_case.execute(warehouse.id)
+
+    assert warehouse.is_deleted is False
+    mock_uow.movement_repo.has_unfinished_for_warehouse.assert_awaited_once_with(1)
+    mock_uow.warehouse_repo.update.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_delete_warehouse_allows_already_deleted_without_unfinished_check(
+    mock_uow, warehouse
+) -> None:
+    warehouse.id = 1
+    warehouse.is_deleted = True
+    mock_uow.warehouse_repo.get_by_id.return_value = warehouse
+    use_case = DeleteWarehouseUseCase(uow=mock_uow)
+
+    result = await use_case.execute(warehouse.id)
+
+    assert result.is_deleted is True
+    mock_uow.movement_repo.has_unfinished_for_warehouse.assert_not_called()
+    mock_uow.warehouse_repo.update.assert_not_called()

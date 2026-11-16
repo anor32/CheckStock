@@ -96,6 +96,9 @@ class IMovementRepository(ABC):
     @abstractmethod
     async def list_movements(self, query: ListMovementsDTO) -> tuple[list[Movement], int]: ...
 
+    @abstractmethod
+    async def has_unfinished_for_warehouse(self, warehouse_id: int) -> bool: ...
+
 
 class IUnitOfWork(ABC):
     sku_repo: ISkuRepository

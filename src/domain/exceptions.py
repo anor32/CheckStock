@@ -63,5 +63,9 @@ class WarehouseDeletedError(CheckStockDomainError):
     """Операция запрещена для удалённого склада."""
 
 
+class WarehouseHasActiveMovementsError(CheckStockDomainError):
+    """Нельзя удалить склад: есть незавершённые движения, связанные со складом."""
+
+
 class ProductAlreadyExistsError(CheckStockDomainError):
     """Товар с таким SKU уже существует."""

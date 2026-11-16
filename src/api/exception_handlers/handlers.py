@@ -13,6 +13,7 @@ from src.domain.exceptions import (
     ProductAlreadyExistsError,
     ProductNotFoundError,
     WarehouseDeletedError,
+    WarehouseHasActiveMovementsError,
 )
 
 
@@ -35,6 +36,12 @@ async def invalid_movement_handler(_: Request, exc: InvalidMovementError) -> JSO
 
 
 async def warehouse_deleted_handler(_: Request, exc: WarehouseDeletedError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+async def warehouse_has_active_movements_handler(
+    _: Request, exc: WarehouseHasActiveMovementsError
+) -> JSONResponse:
     return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
@@ -66,6 +73,9 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(InsufficientStockError, insufficient_stock_handler)
     app.add_exception_handler(InvalidMovementError, invalid_movement_handler)
     app.add_exception_handler(WarehouseDeletedError, warehouse_deleted_handler)
+    app.add_exception_handler(
+        WarehouseHasActiveMovementsError, warehouse_has_active_movements_handler
+    )
     app.add_exception_handler(ProductAlreadyExistsError, product_already_exists_handler)
     app.add_exception_handler(CheckStockDomainError, checkstock_domain_error_handler)
     app.add_exception_handler(IntegrityError, integrity_error_handler)
