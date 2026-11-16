@@ -24,7 +24,7 @@ class ReceiveMovementUseCase:
         to_stock.receive(movement.qty)
         await self.uow.stock_repo.update(to_stock)
 
-        movement.complete(idempotency_key=input_data.idempotency_key)
+        movement.complete()
         return await self.uow.movement_repo.save_movement(movement)
 
     async def _ensure_active_warehouse(self, warehouse_id: int) -> None:

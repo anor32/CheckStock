@@ -6,7 +6,6 @@ import pytest
 from src.application.dtos import FbsShipMovementInput
 from src.application.usecases.movements.fbs_ship_movement import FbsShipMovementUseCase
 from src.domain.entities import Movement, MovementStatus, MovementType, Product, Stock, Warehouse
-from src.domain.exceptions import DuplicateIdempotencyKeyError
 
 
 @pytest.mark.asyncio
@@ -23,6 +22,7 @@ async def test_fbs_ship_idempotency_does_not_double_deduct(mock_uow):
         from_warehouse_id=1,
         status=MovementStatus.PENDING,
         created_at=datetime.now(UTC),
+        idempotency_key="create-reserve-key",
     )
 
     mock_uow.movement_repo.get_movement = AsyncMock(return_value=movement)
@@ -41,9 +41,15 @@ async def test_fbs_ship_idempotency_does_not_double_deduct(mock_uow):
     assert stock.qty_physical == 8
     assert stock.qty_reserved_fbs == 2
     assert result1.status == MovementStatus.IN_TRANSIT
+    assert result1.idempotency_key == "create-reserve-key"
+    assert mock_uow.stock_repo.update.await_count == 1
+    assert mock_uow.movement_repo.save_movement.await_count == 1
 
-    with pytest.raises(DuplicateIdempotencyKeyError):
-        await use_case.execute(input_data)
+    result2 = await use_case.execute(input_data)
 
+    assert result2 is result1
     assert stock.qty_physical == 8, "Повторная отгрузка списала товар второй раз!"
     assert stock.qty_reserved_fbs == 2, "Повторная отгрузка списала резерв второй раз!"
+    assert movement.idempotency_key == "create-reserve-key"
+    assert mock_uow.stock_repo.update.await_count == 1
+    assert mock_uow.movement_repo.save_movement.await_count == 1

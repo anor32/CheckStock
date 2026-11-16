@@ -25,9 +25,7 @@ class FbsCancelMovementUseCase:
         stock.release_reservation(movement.qty)
         await self.uow.stock_repo.update(stock)
 
-        movement.complete(
-            status=MovementStatus.CANCELLED, idempotency_key=input_data.idempotency_key
-        )
+        movement.complete(status=MovementStatus.CANCELLED)
         return await self.uow.movement_repo.save_movement(movement)
 
     async def _ensure_active_warehouse(self, warehouse_id: int) -> None:

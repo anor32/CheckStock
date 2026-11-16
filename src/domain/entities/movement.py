@@ -83,12 +83,10 @@ class Movement:
         """Идемпотентный no-op: FBS-отгрузка уже переведена в статус in_transit."""
         return self.type == MovementType.FBS_SHIP and self.status == MovementStatus.IN_TRANSIT
 
-    def ship_fbs(self, *, idempotency_key: str | None = None) -> Movement:
+    def ship_fbs(self) -> Movement:
         self.type = MovementType.FBS_SHIP
         self.status = MovementStatus.IN_TRANSIT
         self.completed_at = None
-        if idempotency_key:
-            self.idempotency_key = idempotency_key
         return self
 
     def complete(
@@ -96,7 +94,6 @@ class Movement:
         *,
         status: MovementStatus = MovementStatus.COMPLETED,
         completed_at: datetime | None = None,
-        idempotency_key: str | None = None,
         set_completed_at_now: bool = True,
     ) -> Movement:
         self.status = status
@@ -106,6 +103,4 @@ class Movement:
             self.completed_at = datetime.now(UTC)
         else:
             self.completed_at = None
-        if idempotency_key:
-            self.idempotency_key = idempotency_key
         return self

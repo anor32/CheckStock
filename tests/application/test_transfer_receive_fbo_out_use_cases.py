@@ -121,6 +121,7 @@ async def test_receive_movement_updates_destination_stock_and_completes(
     destination_stock,
     receive_input_in_transit,
 ) -> None:
+    receive_in_transit_movement.idempotency_key = "transfer-create-key"
     mock_uow.movement_repo.get_movement.return_value = receive_in_transit_movement
     mock_uow.warehouse_repo.get_by_id.return_value = destination_warehouse
     mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
@@ -135,6 +136,7 @@ async def test_receive_movement_updates_destination_stock_and_completes(
     assert destination_stock.qty_physical == 3
     assert result.status == MovementStatus.COMPLETED
     assert receive_in_transit_movement.completed_at is not None
+    assert result.idempotency_key == "transfer-create-key"
     mock_uow.stock_repo.update.assert_awaited_once_with(destination_stock)
 
 

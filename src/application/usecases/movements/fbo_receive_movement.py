@@ -18,7 +18,5 @@ class FboReceiveMovementUseCase:
         if movement.is_completed():
             return movement
 
-        movement.complete(
-            status=MovementStatus.COMPLETED, idempotency_key=input_data.idempotency_key
-        )
+        movement.complete(status=MovementStatus.COMPLETED)
         return await self.uow.movement_repo.save_movement(movement)

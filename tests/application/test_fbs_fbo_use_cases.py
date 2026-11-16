@@ -11,11 +11,7 @@ from src.application.usecases.movements.fbs_cancel_movement import FbsCancelMove
 from src.application.usecases.movements.fbs_reserve_movement import FbsReserveMovementUseCase
 from src.application.usecases.movements.fbs_ship_movement import FbsShipMovementUseCase
 from src.domain.entities import Movement, MovementStatus, MovementType, Stock
-from src.domain.exceptions import (
-    DuplicateIdempotencyKeyError,
-    InsufficientStockError,
-    InvalidMovementError,
-)
+from src.domain.exceptions import InsufficientStockError, InvalidMovementError
 
 
 @pytest.mark.asyncio
@@ -35,6 +31,7 @@ async def test_fbo_receive_returns_existing_for_idempotent_request(
 async def test_fbo_receive_completes_in_transit_movement(
     mock_uow, fbo_receive_in_transit_movement, warehouse, fbo_receive_input_no_key
 ) -> None:
+    fbo_receive_in_transit_movement.idempotency_key = "fbo-create-key"
     mock_uow.movement_repo.get_movement.return_value = fbo_receive_in_transit_movement
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
     use_case = FboReceiveMovementUseCase(uow=mock_uow)
@@ -42,6 +39,7 @@ async def test_fbo_receive_completes_in_transit_movement(
     result = await use_case.execute(fbo_receive_input_no_key)
 
     assert result.status == MovementStatus.COMPLETED
+    assert result.idempotency_key == "fbo-create-key"
     mock_uow.movement_repo.save_movement.assert_awaited_once()
 
 
@@ -127,16 +125,19 @@ async def test_fbs_reserve_increases_reserved_and_creates_pending_movement(
 
 
 @pytest.mark.asyncio
-async def test_fbs_ship_raises_duplicate_idempotency_key_when_already_in_transit(
+async def test_fbs_ship_returns_existing_when_already_in_transit(
     mock_uow, fbs_ship_in_transit_movement
 ) -> None:
-    fbs_ship_in_transit_movement.idempotency_key = "ship-key-1"
     mock_uow.movement_repo.get_movement.return_value = fbs_ship_in_transit_movement
     use_case = FbsShipMovementUseCase(uow=mock_uow)
 
-    with pytest.raises(DuplicateIdempotencyKeyError):
-        await use_case.execute(FbsShipMovementInput(movement_id=70, idempotency_key="ship-key-1"))
+    result = await use_case.execute(
+        FbsShipMovementInput(movement_id=70, idempotency_key="ship-key-1")
+    )
 
+    assert result is fbs_ship_in_transit_movement
+    mock_uow.stock_repo.get_by_product_and_warehouse_for_update.assert_not_called()
+    mock_uow.stock_repo.update.assert_not_called()
     mock_uow.movement_repo.save_movement.assert_not_called()
 
 
@@ -149,6 +150,7 @@ async def test_fbs_ship_updates_stock_and_marks_in_transit_to_customer(
     stock_for_ship,
     fbs_ship_input,
 ) -> None:
+    fbs_reserve_pending_movement.idempotency_key = "reserve-create-key"
     mock_uow.movement_repo.get_movement.return_value = fbs_reserve_pending_movement
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
     mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
@@ -165,6 +167,7 @@ async def test_fbs_ship_updates_stock_and_marks_in_transit_to_customer(
     assert result.status == MovementStatus.IN_TRANSIT
     assert result.type == MovementType.FBS_SHIP
     assert result.completed_at is None
+    assert result.idempotency_key == "reserve-create-key"
     mock_uow.stock_repo.update.assert_awaited_once_with(stock_for_ship)
     mock_uow.movement_repo.save_movement.assert_awaited_once()
 
@@ -191,6 +194,7 @@ async def test_fbs_cancel_releases_reservation_and_marks_cancelled(
     stock_for_ship,
     fbs_cancel_input,
 ) -> None:
+    fbs_cancel_pending_movement.idempotency_key = "reserve-create-key"
     mock_uow.movement_repo.get_movement.return_value = fbs_cancel_pending_movement
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
     mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
@@ -204,6 +208,7 @@ async def test_fbs_cancel_releases_reservation_and_marks_cancelled(
 
     assert stock_for_ship.qty_reserved_fbs == 0
     assert result.status == MovementStatus.CANCELLED
+    assert result.idempotency_key == "reserve-create-key"
     mock_uow.stock_repo.update.assert_awaited_once_with(stock_for_ship)
     mock_uow.movement_repo.save_movement.assert_awaited_once()
 
@@ -376,9 +381,9 @@ async def test_fbs_ship_is_idempotent_and_does_not_double_debit(
     assert mock_uow.stock_repo.update.await_count == 1
     assert mock_uow.movement_repo.save_movement.await_count == 1
 
-    with pytest.raises(DuplicateIdempotencyKeyError):
-        await use_case.execute(ship_input)
+    result2 = await use_case.execute(ship_input)
 
+    assert result2 is result
     assert stock.qty_physical == 8
     assert stock.qty_reserved_fbs == 2
     assert mock_uow.stock_repo.update.await_count == 1
