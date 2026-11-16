@@ -10,6 +10,7 @@ from src.domain.exceptions import (
     StockNotFoundError,
 )
 from src.domain.interfaces import IUnitOfWork
+from src.domain.value_objects.insufficient_stock import InsufficientStockInfo
 
 
 class FbsShipMovementUseCase:
@@ -72,14 +73,12 @@ class FbsShipMovementUseCase:
             other_warehouses = await self.uow.stock_repo.list_other_warehouses_availability(
                 movement.product_id, warehouse.id
             )
-            raise InsufficientStockError(
-                message="Недостаточно остатка для операции.",
-                data={
-                    "available": stock.qty_physical,
-                    "requested": movement.qty,
-                    "other_warehouses": other_warehouses,
-                },
-            ) from err
+            info = InsufficientStockInfo.build(
+                available=stock.qty_physical,
+                requested=movement.qty,
+                other_warehouses=other_warehouses,
+            )
+            raise InsufficientStockError(info=info) from err
 
     async def _ensure_releasable(
         self, stock: Stock, movement: Movement, warehouse: Warehouse
@@ -90,11 +89,9 @@ class FbsShipMovementUseCase:
             other_warehouses = await self.uow.stock_repo.list_other_warehouses_availability(
                 movement.product_id, warehouse.id
             )
-            raise InsufficientStockError(
-                message="Недостаточно остатка для операции.",
-                data={
-                    "available": stock.qty_reserved_fbs,
-                    "requested": movement.qty,
-                    "other_warehouses": other_warehouses,
-                },
-            ) from err
+            info = InsufficientStockInfo.build(
+                available=stock.qty_reserved_fbs,
+                requested=movement.qty,
+                other_warehouses=other_warehouses,
+            )
+            raise InsufficientStockError(info=info) from err

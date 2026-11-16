@@ -219,14 +219,22 @@ async def test_transfer_movement_raises_detailed_error_when_enough_on_other_ware
     with pytest.raises(InsufficientStockError) as exc:
         await use_case.execute(transfer_input_no_key)
 
-    data = exc.value.data
-    assert data is not None
-    assert data["available"] == transfer_from_stock_low_available.qty_available
-    assert data["requested"] == transfer_input_no_key.qty
-    assert data["other_warehouses"] == [other_warehouse_availability_enough_id3]
+    info = exc.value.info
+    assert info is not None
+    assert info.available == transfer_from_stock_low_available.qty_available
+    assert info.requested == transfer_input_no_key.qty
+    assert info.other_warehouses == [other_warehouse_availability_enough_id3]
+    assert info.other_total_available == 5
+    assert info.is_sufficient_in_total is True
 
-    response = ErrorResponse.from_error_data(data)
-    assert response.detail == "Недостаточно остатка: доступно 1, запрошено 2."
+    response = ErrorResponse.from_error_data(info)
+    assert response.other_total_available == 5
+    assert response.is_sufficient_in_total is True
+    assert response.detail == (
+        "Недостаточно остатка на выбранном складе: доступно 1, запрошено 2. "
+        "На других активных складах доступно суммарно 5. Этого достаточно для операции. "
+        "Склады-кандидаты: Other Warehouse (id=3): доступно 5."
+    )
 
 
 @pytest.mark.asyncio
@@ -255,11 +263,18 @@ async def test_fbo_out_movement_raises_detailed_error_when_not_enough_in_total(
     with pytest.raises(InsufficientStockError) as exc:
         await use_case.execute(fbo_out_input_no_key)
 
-    data = exc.value.data
-    assert data is not None
-    assert data["available"] == stock_no_reserve.qty_physical
-    assert data["requested"] == fbo_out_input_no_key.qty
-    assert data["other_warehouses"] == [other_warehouse_availability_empty]
+    info = exc.value.info
+    assert info is not None
+    assert info.available == stock_no_reserve.qty_physical
+    assert info.requested == fbo_out_input_no_key.qty
+    assert info.other_warehouses == [other_warehouse_availability_empty]
+    assert info.other_total_available == 0
+    assert info.is_sufficient_in_total is False
 
-    response = ErrorResponse.from_error_data(data)
-    assert response.detail == "Недостаточно остатка: доступно 1, запрошено 2."
+    response = ErrorResponse.from_error_data(info)
+    assert response.other_total_available == 0
+    assert response.is_sufficient_in_total is False
+    assert response.detail == (
+        "Недостаточно остатка на выбранном складе: доступно 1, запрошено 2. "
+        "На других активных складах доступно суммарно 0. Этого недостаточно для операции."
+    )

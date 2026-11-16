@@ -1,4 +1,8 @@
+from __future__ import annotations
+
 from typing import Any
+
+from src.domain.value_objects.insufficient_stock import InsufficientStockInfo
 
 
 class AppError(Exception):
@@ -32,9 +36,19 @@ class StockNotFoundError(ProductNotFoundError):
 class InsufficientStockError(CheckStockDomainError):
     """Недостаточно остатка для операции."""
 
-    def __init__(self, message: str = "", data: dict[str, Any] | None = None) -> None:
-        super().__init__(message, data)
-        self.data = data
+    def __init__(
+        self,
+        message: str = "",
+        data: dict[str, Any] | None = None,
+        info: InsufficientStockInfo | None = None,
+    ) -> None:
+        resolved_message = message or (info.detail if info is not None else "")
+        resolved_data = (
+            data if data is not None else (info.to_error_data() if info is not None else None)
+        )
+        super().__init__(resolved_message, resolved_data)
+        self.info = info
+        self.data = resolved_data
 
 
 class InvalidMovementError(CheckStockDomainError):

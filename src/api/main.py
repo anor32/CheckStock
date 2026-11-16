@@ -40,7 +40,8 @@ async def product_not_found_handler(_: Request, exc: ProductNotFoundError) -> JS
 
 @app.exception_handler(InsufficientStockError)
 async def insufficient_stock_handler(_: Request, exc: InsufficientStockError) -> JSONResponse:
-    response = ErrorResponse.from_error_data(exc.data)
+    payload = exc.info if exc.info is not None else exc.data
+    response = ErrorResponse.from_error_data(payload)
     return JSONResponse(status_code=409, content=response.model_dump())
 
 

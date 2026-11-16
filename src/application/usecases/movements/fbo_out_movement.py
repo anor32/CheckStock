@@ -6,6 +6,7 @@ from src.application.dtos import CreateFboOutMovementInput, CreateStockDTO
 from src.domain.entities import Movement, Stock, Warehouse
 from src.domain.exceptions import InsufficientStockError, StockNotFoundError
 from src.domain.interfaces import IUnitOfWork
+from src.domain.value_objects.insufficient_stock import InsufficientStockInfo
 
 
 class FboOutMovementUseCase:
@@ -57,11 +58,9 @@ class FboOutMovementUseCase:
             other_warehouses = await self.uow.stock_repo.list_other_warehouses_availability(
                 input_data.product_id, input_data.from_warehouse_id
             )
-            raise InsufficientStockError(
-                message="Недостаточно остатка для операции.",
-                data={
-                    "available": stock.qty_physical,
-                    "requested": input_data.qty,
-                    "other_warehouses": other_warehouses,
-                },
-            ) from err
+            info = InsufficientStockInfo.build(
+                available=stock.qty_physical,
+                requested=input_data.qty,
+                other_warehouses=other_warehouses,
+            )
+            raise InsufficientStockError(info=info) from err

@@ -8,6 +8,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.domain.entities import MovementStatus, MovementType, WarehouseStockAvailability
+from src.domain.value_objects.insufficient_stock import InsufficientStockInfo
 
 
 class ProductResponse(BaseModel):
@@ -169,6 +170,8 @@ class ErrorResponse(BaseModel):
     available: int
     requested: int
     other_warehouses: list[OtherWarehouseAvailabilityResponse] | None = None
+    other_total_available: int | None = None
+    is_sufficient_in_total: bool | None = None
 
     @staticmethod
     def _serialize_other_warehouses(
@@ -214,18 +217,72 @@ class ErrorResponse(BaseModel):
     def build_detail(cls, data: dict[str, Any]) -> str:
         available = int(data.get("available", data.get("selected_qty", 0)))
         requested = int(data.get("requested", data.get("requested_qty", 0)))
-        return f"Недостаточно остатка: доступно {available}, запрошено {requested}."
+        other_warehouses = cls._serialize_other_warehouses(data.get("other_warehouses"))
+        other_total_available = data.get("other_total_available")
+        if other_total_available is None:
+            other_total_available = sum(item.qty_available for item in other_warehouses)
+        else:
+            other_total_available = int(other_total_available)
+        is_sufficient_in_total = data.get("is_sufficient_in_total")
+        if is_sufficient_in_total is None:
+            is_sufficient_in_total = other_total_available >= requested
+        else:
+            is_sufficient_in_total = bool(is_sufficient_in_total)
+
+        base = (
+            f"Недостаточно остатка на выбранном складе: доступно {available}, запрошено {requested}. "
+            f"На других активных складах доступно суммарно {other_total_available}."
+        )
+        if is_sufficient_in_total:
+            if other_warehouses:
+                candidates = ", ".join(
+                    f"{item.warehouse_name} (id={item.warehouse_id}): доступно {item.qty_available}"
+                    for item in other_warehouses
+                    if item.qty_available > 0
+                )
+                if candidates:
+                    return f"{base} Этого достаточно для операции. Склады-кандидаты: {candidates}."
+            return f"{base} Этого достаточно для операции."
+        return f"{base} Этого недостаточно для операции."
 
     @classmethod
-    def from_error_data(cls, data: dict[str, Any] | None) -> ErrorResponse:
+    def from_error_data(cls, data: dict[str, Any] | InsufficientStockInfo | None) -> ErrorResponse:
+        if isinstance(data, InsufficientStockInfo):
+            other_warehouses = cls._serialize_other_warehouses(list(data.other_warehouses))
+            return cls(
+                detail=data.detail or cls.build_detail(data.to_error_data()),
+                available=data.available,
+                requested=data.requested,
+                other_warehouses=other_warehouses or None,
+                other_total_available=data.other_total_available,
+                is_sufficient_in_total=data.is_sufficient_in_total,
+            )
+
         payload = data or {}
         available = int(payload.get("available", payload.get("selected_qty", 0)))
         requested = int(payload.get("requested", payload.get("requested_qty", 0)))
         other_warehouses = cls._serialize_other_warehouses(payload.get("other_warehouses"))
-        detail = cls.build_detail(payload) if payload else "Недостаточно остатка для операции."
+        detail = str(payload.get("detail") or "")
+        if not detail:
+            detail = cls.build_detail(payload) if payload else "Недостаточно остатка для операции."
+
+        other_total_available = payload.get("other_total_available")
+        if other_total_available is None and payload:
+            other_total_available = sum(item.qty_available for item in other_warehouses)
+        if other_total_available is not None:
+            other_total_available = int(other_total_available)
+
+        is_sufficient_in_total = payload.get("is_sufficient_in_total")
+        if is_sufficient_in_total is None and payload:
+            is_sufficient_in_total = int(other_total_available or 0) >= requested
+        if is_sufficient_in_total is not None:
+            is_sufficient_in_total = bool(is_sufficient_in_total)
+
         return cls(
             detail=detail,
             available=available,
             requested=requested,
             other_warehouses=other_warehouses or None,
+            other_total_available=other_total_available,
+            is_sufficient_in_total=is_sufficient_in_total,
         )

@@ -225,15 +225,25 @@ async def test_fbs_reserve_raises_detailed_error_when_enough_on_other_warehouses
         await use_case.execute(fbs_reserve_input_no_key)
 
     data = exc.value.data
+    info = exc.value.info
     assert data is not None
+    assert info is not None
     assert data["available"] == stock_low_available.qty_available
     assert data["requested"] == fbs_reserve_input_no_key.qty
     assert data["other_warehouses"] == [other_warehouse_availability_enough]
+    assert info.other_total_available == 5
+    assert info.is_sufficient_in_total is True
 
-    response = ErrorResponse.from_error_data(data)
-    assert response.detail == "Недостаточно остатка: доступно 1, запрошено 2."
+    response = ErrorResponse.from_error_data(info)
     assert response.available == 1
     assert response.requested == 2
+    assert response.other_total_available == 5
+    assert response.is_sufficient_in_total is True
+    assert response.detail == (
+        "Недостаточно остатка на выбранном складе: доступно 1, запрошено 2. "
+        "На других активных складах доступно суммарно 5. Этого достаточно для операции. "
+        "Склады-кандидаты: Other Warehouse (id=2): доступно 5."
+    )
 
 
 @pytest.mark.asyncio
@@ -263,13 +273,22 @@ async def test_fbs_reserve_raises_detailed_error_when_not_enough_in_total(
         await use_case.execute(fbs_reserve_input_no_key)
 
     data = exc.value.data
+    info = exc.value.info
     assert data is not None
+    assert info is not None
     assert data["available"] == stock_low_available.qty_available
     assert data["requested"] == fbs_reserve_input_no_key.qty
     assert sum(item.qty_available for item in data["other_warehouses"]) == 0
+    assert info.other_total_available == 0
+    assert info.is_sufficient_in_total is False
 
-    response = ErrorResponse.from_error_data(data)
-    assert response.detail == "Недостаточно остатка: доступно 1, запрошено 2."
+    response = ErrorResponse.from_error_data(info)
+    assert response.other_total_available == 0
+    assert response.is_sufficient_in_total is False
+    assert response.detail == (
+        "Недостаточно остатка на выбранном складе: доступно 1, запрошено 2. "
+        "На других активных складах доступно суммарно 0. Этого недостаточно для операции."
+    )
 
 
 @pytest.mark.asyncio
@@ -297,11 +316,17 @@ async def test_fbs_ship_raises_detailed_error_when_physical_shortage_but_enough_
     with pytest.raises(InsufficientStockError) as exc:
         await use_case.execute(fbs_ship_input)
 
-    data = exc.value.data
-    assert data is not None
-    assert data["available"] == stock_insufficient_physical_for_ship.qty_physical
-    assert data["requested"] == fbs_reserve_pending_movement.qty
-    assert data["other_warehouses"] == [other_warehouse_availability_enough]
+    info = exc.value.info
+    assert info is not None
+    assert info.available == stock_insufficient_physical_for_ship.qty_physical
+    assert info.requested == fbs_reserve_pending_movement.qty
+    assert info.other_warehouses == [other_warehouse_availability_enough]
+    assert info.other_total_available == 5
+    assert info.is_sufficient_in_total is True
 
-    response = ErrorResponse.from_error_data(data)
-    assert response.detail == "Недостаточно остатка: доступно 1, запрошено 2."
+    response = ErrorResponse.from_error_data(info)
+    assert response.detail == (
+        "Недостаточно остатка на выбранном складе: доступно 1, запрошено 2. "
+        "На других активных складах доступно суммарно 5. Этого достаточно для операции. "
+        "Склады-кандидаты: Other Warehouse (id=2): доступно 5."
+    )
