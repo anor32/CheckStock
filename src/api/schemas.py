@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from src.domain.entities import MovementStatus, MovementType, WarehouseStockAvailability
 from src.domain.value_objects.insufficient_stock import InsufficientStockInfo
@@ -131,10 +131,15 @@ class FbsCancelMovementRequest(BaseModel):
 class ListMovementsRequest(BaseModel):
     """Схема запроса списка движений — один объект вместо разрозненных query-параметров."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     page: int = Field(1, ge=1)
     page_size: int = Field(20, ge=1, le=100)
     product_id: int | None = None
-    movement_type: MovementType | None = None
+    movement_type: MovementType | None = Field(
+        default=None,
+        validation_alias=AliasChoices("movement_type", "type"),
+    )
     status: MovementStatus | None = None
     warehouse_id: int | None = None
     date_from: str | None = None

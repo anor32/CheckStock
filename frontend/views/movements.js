@@ -20,7 +20,7 @@ export async function loadMovements() {
     page: state.movements.page,
     page_size: state.movements.pageSize,
     product_id: fd.get("product_id") || undefined,
-    type: fd.get("type") || undefined,
+    movement_type: fd.get("type") || undefined,
     status: fd.get("status") || undefined,
     warehouse_id: fd.get("warehouse_id") || undefined,
     date_from: toIsoOrUndefined(fd.get("date_from")),

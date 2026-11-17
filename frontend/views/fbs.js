@@ -16,7 +16,7 @@ export async function loadFbsReserves() {
   try {
     if (!state.products.length || !state.warehouses.length) await loadReferenceData().catch(() => {});
     const data = await apiRequest("/api/v1/movements", {
-      query: { page: 1, page_size: 100, type: "fbs_reserve", status: "pending" },
+      query: { page: 1, page_size: 100, movement_type: "fbs_reserve", status: "pending" },
     });
     const items = ((data && data.items) || []).filter((m) => m.type === "fbs_reserve" && m.status === "pending");
     const tbody = $("#fbs-reserves-table tbody");

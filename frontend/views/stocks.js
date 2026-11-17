@@ -68,7 +68,7 @@ export async function loadInTransitItems() {
     if (!state.products.length || !state.warehouses.length) await loadReferenceData().catch(() => {});
     const [inTransitRes, fbsPendingRes] = await Promise.all([
       apiRequest("/api/v1/movements", { query: { page: 1, page_size: 100, status: "in_transit" } }),
-      apiRequest("/api/v1/movements", { query: { page: 1, page_size: 100, type: "fbs_reserve", status: "pending" } }),
+      apiRequest("/api/v1/movements", { query: { page: 1, page_size: 100, movement_type: "fbs_reserve", status: "pending" } }),
     ]);
     const byId = new Map();
     for (const m of (inTransitRes && inTransitRes.items) || []) {
