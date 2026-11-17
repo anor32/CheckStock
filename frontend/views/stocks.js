@@ -66,18 +66,12 @@ export async function loadInTransitItems() {
   setStatus("#in-transit-status", "Загрузка…");
   try {
     if (!state.products.length || !state.warehouses.length) await loadReferenceData().catch(() => {});
-    const [inTransitRes, fbsPendingRes] = await Promise.all([
-      apiRequest("/api/v1/movements", { query: { page: 1, page_size: 100, status: "in_transit" } }),
-      apiRequest("/api/v1/movements", { query: { page: 1, page_size: 100, movement_type: "fbs_reserve", status: "pending" } }),
-    ]);
-    const byId = new Map();
-    for (const m of (inTransitRes && inTransitRes.items) || []) {
-      if (["transfer", "transfer_out", "transfer_in", "fbo_out", "fbs_ship"].includes(m.type)) byId.set(m.id, m);
-    }
-    for (const m of (fbsPendingRes && fbsPendingRes.items) || []) {
-      if (m.type === "fbs_reserve" && m.status === "pending") byId.set(m.id, m);
-    }
-    const items = Array.from(byId.values()).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    const inTransitRes = await apiRequest("/api/v1/movements", {
+      query: { page: 1, page_size: 100, status: "in_transit" },
+    });
+    const items = ((inTransitRes && inTransitRes.items) || [])
+      .filter((m) => ["transfer", "transfer_out", "transfer_in", "fbo_out"].includes(m.type))
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
     const tbody = $("#in-transit-table tbody");
     if (!items.length) {
       tbody.innerHTML = `<tr><td colspan="10">Нет товаров в пути</td></tr>`;
@@ -107,13 +101,11 @@ export async function loadInTransitItems() {
 function inTransitCategory(m) {
   if (m.type === "fbo_out") return "На склад маркетплейса (FBO)";
   if (m.type === "transfer" || m.type === "transfer_out" || m.type === "transfer_in") return "Между ФФ";
-  if (m.type === "fbs_reserve" || m.type === "fbs_ship") return "К клиенту (FBS)";
   return "—";
 }
 
 function inTransitDirection(m) {
   if (m.type === "fbo_out") return "Маркетплейс";
-  if (m.type === "fbs_reserve" || m.type === "fbs_ship") return "Клиент (FBS)";
   return warehouseLabelById(m.to_warehouse_id);
 }
 
@@ -123,12 +115,6 @@ function inTransitActionButton(m) {
   }
   if (m.type === "transfer" || m.type === "transfer_out") {
     return `<button data-action="in-transit-receive" data-type="transfer" data-id="${m.id}">Принять перемещение</button>`;
-  }
-  if (m.type === "fbs_reserve" && m.status === "pending") {
-    return `<div class="row-actions"><button class="btn-sm" data-action="fbs-ship" data-id="${m.id}" data-qty="${escapeHtml(m.qty)}">Отправить клиенту</button><button class="btn-sm btn-danger-soft" data-action="fbs-cancel" data-id="${m.id}" data-qty="${escapeHtml(m.qty)}">Отменить отправку</button></div>`;
-  }
-  if (m.type === "fbs_ship") {
-    return "—";
   }
   return "—";
 }
