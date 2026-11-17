@@ -58,6 +58,15 @@ class SqlAlchemyMovementRepository(IMovementRepository):
             raise EntityNotFoundError(f"Movement not found: {movement_id}")
         return model.to_entity()
 
+    async def get_movement_for_update(self, movement_id: int) -> Movement:
+        res = await self.session.execute(
+            select(MovementModel).where(MovementModel.id == movement_id).with_for_update()
+        )
+        model = res.scalar_one_or_none()
+        if model is None:
+            raise EntityNotFoundError(f"Movement not found: {movement_id}")
+        return model.to_entity()
+
     async def get_by_idempotency_key(self, idempotency_key: str) -> Movement | None:
         if not idempotency_key:
             return None

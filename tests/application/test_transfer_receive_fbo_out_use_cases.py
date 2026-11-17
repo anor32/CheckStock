@@ -90,7 +90,7 @@ async def test_transfer_movement_updates_stock_and_creates_in_transit_movement(
 async def test_receive_movement_raises_when_movement_not_found(
     mock_uow, receive_input_not_found
 ) -> None:
-    mock_uow.movement_repo.get_movement.side_effect = EntityNotFoundError("not found")
+    mock_uow.movement_repo.get_movement_for_update.side_effect = EntityNotFoundError("not found")
     use_case = ReceiveMovementUseCase(uow=mock_uow)
 
     with pytest.raises(EntityNotFoundError):
@@ -101,7 +101,7 @@ async def test_receive_movement_raises_when_movement_not_found(
 async def test_receive_movement_is_noop_when_already_completed(
     mock_uow, receive_completed_movement, receive_input_completed
 ) -> None:
-    mock_uow.movement_repo.get_movement.return_value = receive_completed_movement
+    mock_uow.movement_repo.get_movement_for_update.return_value = receive_completed_movement
     use_case = ReceiveMovementUseCase(uow=mock_uow)
 
     result = await use_case.execute(receive_input_completed)
@@ -122,7 +122,7 @@ async def test_receive_movement_updates_destination_stock_and_completes(
     receive_input_in_transit,
 ) -> None:
     receive_in_transit_movement.idempotency_key = "transfer-create-key"
-    mock_uow.movement_repo.get_movement.return_value = receive_in_transit_movement
+    mock_uow.movement_repo.get_movement_for_update.return_value = receive_in_transit_movement
     mock_uow.warehouse_repo.get_by_id.return_value = destination_warehouse
     mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
         product,

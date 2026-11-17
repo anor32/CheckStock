@@ -14,7 +14,7 @@ class FbsShipMovementUseCase:
         self.uow = uow
 
     async def execute(self, input_data: FbsShipMovementInput) -> Movement:
-        movement = await self.uow.movement_repo.get_movement(input_data.movement_id)
+        movement = await self.uow.movement_repo.get_movement_for_update(input_data.movement_id)
         if movement.is_fbs_ship_in_transit():
             return movement
 

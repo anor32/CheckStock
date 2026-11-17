@@ -19,7 +19,7 @@ from src.domain.exceptions import InsufficientStockError, InvalidMovementError
 async def test_fbo_receive_returns_existing_for_idempotent_request(
     mock_uow, fbo_receive_completed_movement, fbo_receive_input
 ) -> None:
-    mock_uow.movement_repo.get_movement.return_value = fbo_receive_completed_movement
+    mock_uow.movement_repo.get_movement_for_update.return_value = fbo_receive_completed_movement
     use_case = FboReceiveMovementUseCase(uow=mock_uow)
 
     result = await use_case.execute(fbo_receive_input)
@@ -33,7 +33,7 @@ async def test_fbo_receive_completes_in_transit_movement(
     mock_uow, fbo_receive_in_transit_movement, warehouse, fbo_receive_input_no_key
 ) -> None:
     fbo_receive_in_transit_movement.idempotency_key = "fbo-create-key"
-    mock_uow.movement_repo.get_movement.return_value = fbo_receive_in_transit_movement
+    mock_uow.movement_repo.get_movement_for_update.return_value = fbo_receive_in_transit_movement
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
     use_case = FboReceiveMovementUseCase(uow=mock_uow)
 
@@ -48,7 +48,7 @@ async def test_fbo_receive_completes_in_transit_movement(
 async def test_fbo_receive_is_noop_when_already_completed(
     mock_uow, fbo_receive_completed_movement, fbo_receive_input_no_key
 ) -> None:
-    mock_uow.movement_repo.get_movement.return_value = fbo_receive_completed_movement
+    mock_uow.movement_repo.get_movement_for_update.return_value = fbo_receive_completed_movement
     use_case = FboReceiveMovementUseCase(uow=mock_uow)
 
     result = await use_case.execute(fbo_receive_input_no_key)
@@ -161,7 +161,7 @@ async def test_fbs_reserve_returns_existing_on_idempotency_key_conflict(
 async def test_fbs_ship_returns_existing_when_already_in_transit(
     mock_uow, fbs_ship_in_transit_movement
 ) -> None:
-    mock_uow.movement_repo.get_movement.return_value = fbs_ship_in_transit_movement
+    mock_uow.movement_repo.get_movement_for_update.return_value = fbs_ship_in_transit_movement
     use_case = FbsShipMovementUseCase(uow=mock_uow)
 
     result = await use_case.execute(
@@ -184,7 +184,7 @@ async def test_fbs_ship_updates_stock_and_marks_in_transit_to_customer(
     fbs_ship_input,
 ) -> None:
     fbs_reserve_pending_movement.idempotency_key = "reserve-create-key"
-    mock_uow.movement_repo.get_movement.return_value = fbs_reserve_pending_movement
+    mock_uow.movement_repo.get_movement_for_update.return_value = fbs_reserve_pending_movement
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
     mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
         product,
@@ -209,7 +209,7 @@ async def test_fbs_ship_updates_stock_and_marks_in_transit_to_customer(
 async def test_fbs_cancel_is_noop_when_already_cancelled(
     mock_uow, fbs_cancelled_movement, fbs_cancel_input
 ) -> None:
-    mock_uow.movement_repo.get_movement.return_value = fbs_cancelled_movement
+    mock_uow.movement_repo.get_movement_for_update.return_value = fbs_cancelled_movement
     use_case = FbsCancelMovementUseCase(uow=mock_uow)
 
     result = await use_case.execute(fbs_cancel_input)
@@ -228,7 +228,7 @@ async def test_fbs_cancel_releases_reservation_and_marks_cancelled(
     fbs_cancel_input,
 ) -> None:
     fbs_cancel_pending_movement.idempotency_key = "reserve-create-key"
-    mock_uow.movement_repo.get_movement.return_value = fbs_cancel_pending_movement
+    mock_uow.movement_repo.get_movement_for_update.return_value = fbs_cancel_pending_movement
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
     mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
         product,
@@ -349,7 +349,7 @@ async def test_fbs_ship_raises_detailed_error_when_physical_shortage_but_enough_
     fbs_ship_input,
     other_warehouse_availability_enough,
 ) -> None:
-    mock_uow.movement_repo.get_movement.return_value = fbs_reserve_pending_movement
+    mock_uow.movement_repo.get_movement_for_update.return_value = fbs_reserve_pending_movement
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
     mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
         product,
@@ -394,7 +394,7 @@ async def test_fbs_ship_is_idempotent_and_does_not_double_debit(
         status=MovementStatus.PENDING,
         created_at=datetime.now(UTC),
     )
-    mock_uow.movement_repo.get_movement.return_value = movement
+    mock_uow.movement_repo.get_movement_for_update.return_value = movement
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
     mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
         product,
@@ -427,7 +427,7 @@ async def test_fbs_ship_is_idempotent_and_does_not_double_debit(
 async def test_fbs_ship_rejects_cancelled_reserve_without_side_effects(
     mock_uow, fbs_cancelled_movement
 ) -> None:
-    mock_uow.movement_repo.get_movement.return_value = fbs_cancelled_movement
+    mock_uow.movement_repo.get_movement_for_update.return_value = fbs_cancelled_movement
     use_case = FbsShipMovementUseCase(uow=mock_uow)
 
     with pytest.raises(InvalidMovementError):
@@ -455,7 +455,7 @@ async def test_fbs_ship_rejects_cancelled_reserve_even_if_other_reservation_exis
         status=MovementStatus.CANCELLED,
         created_at=datetime.now(UTC),
     )
-    mock_uow.movement_repo.get_movement.return_value = movement
+    mock_uow.movement_repo.get_movement_for_update.return_value = movement
     mock_uow.warehouse_repo.get_by_id.return_value = warehouse
     mock_uow.stock_repo.get_by_product_and_warehouse_for_update.return_value = (
         product,
@@ -487,7 +487,7 @@ async def test_fbs_cancel_rejects_non_pending_non_cancelled_reserve_without_side
         status=MovementStatus.IN_TRANSIT,
         created_at=datetime.now(UTC),
     )
-    mock_uow.movement_repo.get_movement.return_value = movement
+    mock_uow.movement_repo.get_movement_for_update.return_value = movement
     use_case = FbsCancelMovementUseCase(uow=mock_uow)
 
     with pytest.raises(InvalidMovementError):

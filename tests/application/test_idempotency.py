@@ -25,7 +25,7 @@ async def test_fbs_ship_idempotency_does_not_double_deduct(mock_uow):
         idempotency_key="create-reserve-key",
     )
 
-    mock_uow.movement_repo.get_movement = AsyncMock(return_value=movement)
+    mock_uow.movement_repo.get_movement_for_update = AsyncMock(return_value=movement)
     mock_uow.warehouse_repo.get_by_id = AsyncMock(return_value=warehouse)
     mock_uow.stock_repo.get_by_product_and_warehouse_for_update = AsyncMock(
         return_value=(product, stock, warehouse)

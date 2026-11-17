@@ -13,7 +13,7 @@ class FbsCancelMovementUseCase:
         self.uow = uow
 
     async def execute(self, input_data: FbsCancelMovementInput) -> Movement:
-        movement = await self.uow.movement_repo.get_movement(input_data.movement_id)
+        movement = await self.uow.movement_repo.get_movement_for_update(input_data.movement_id)
         movement.ensure_type(MovementType.FBS_RESERVE)
         if movement.is_cancelled():
             return movement

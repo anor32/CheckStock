@@ -91,6 +91,9 @@ class IMovementRepository(ABC):
     async def get_movement(self, movement_id: int) -> Movement: ...
 
     @abstractmethod
+    async def get_movement_for_update(self, movement_id: int) -> Movement: ...
+
+    @abstractmethod
     async def get_by_idempotency_key(self, idempotency_key: str) -> Movement | None: ...
 
     @abstractmethod
