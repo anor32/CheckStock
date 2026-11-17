@@ -129,8 +129,9 @@ export async function apiRequest(path, { method = "GET", body, query } = {}) {
 }
 
 export function fillSelect(select, items, { valueKey = "id", labelFn, includeEmpty = true, emptyLabel = "— выбрать —" } = {}) {
-  if (!select) return;
-  const prev = select.value;
+  const el = typeof select === "string" ? $(select.startsWith("#") ? select : `#${select}`) : select;
+  if (!el) return;
+  const prev = el.value;
   const opts = [];
   if (includeEmpty) opts.push(`<option value="">${escapeHtml(emptyLabel)}</option>`);
   for (const item of items) {
@@ -138,8 +139,8 @@ export function fillSelect(select, items, { valueKey = "id", labelFn, includeEmp
     const label = labelFn ? labelFn(item) : String(val);
     opts.push(`<option value="${escapeHtml(val)}">${escapeHtml(label)}</option>`);
   }
-  select.innerHTML = opts.join("");
-  if (prev && Array.from(select.options).some((o) => o.value === prev)) select.value = prev;
+  el.innerHTML = opts.join("");
+  if (prev && Array.from(el.options).some((o) => o.value === prev)) el.value = prev;
 }
 
 export async function loadProducts() {
@@ -173,7 +174,7 @@ export function refreshAllSelectors() {
     { id: "fbs-product" },
   ];
   for (const { id, emptyLabel } of productSelects) {
-    fillSelect($(id), state.products, {
+    fillSelect(`#${id}`, state.products, {
       labelFn: productLabel,
       includeEmpty: true,
       emptyLabel: emptyLabel || "— выбрать —",
@@ -190,7 +191,7 @@ export function refreshAllSelectors() {
     { id: "fbs-warehouse", warehouses: activeWarehouses },
   ];
   for (const { id, warehouses, emptyLabel } of warehouseSelects) {
-    fillSelect($(id), warehouses, {
+    fillSelect(`#${id}`, warehouses, {
       labelFn: warehouseWithDeletedLabel,
       includeEmpty: true,
       emptyLabel: emptyLabel || "— выбрать —",
