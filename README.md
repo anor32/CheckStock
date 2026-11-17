@@ -72,7 +72,7 @@ uv run python -m src.infrastructure.fixtures
 Локально:
 
 ```bash
-uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+uv run uvicorn src.api.main:app --host 127.0.0.1 --port 8000
 # или
 uv run python run.py
 ```

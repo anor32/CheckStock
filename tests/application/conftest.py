@@ -262,19 +262,6 @@ def fbs_reserve_saved_movement() -> Movement:
 
 
 @pytest.fixture
-def fbs_ship_in_transit_movement() -> Movement:
-    return Movement(
-        id=70,
-        product_id=1,
-        type=MovementType.FBS_SHIP,
-        qty=2,
-        from_warehouse_id=1,
-        status=MovementStatus.IN_TRANSIT,
-        created_at=datetime.now(UTC),
-    )
-
-
-@pytest.fixture
 def fbs_reserve_pending_movement() -> Movement:
     return Movement(
         id=70,

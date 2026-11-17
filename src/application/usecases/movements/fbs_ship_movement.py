@@ -15,7 +15,7 @@ class FbsShipMovementUseCase:
 
     async def execute(self, input_data: FbsShipMovementInput) -> Movement:
         movement = await self.uow.movement_repo.get_movement_for_update(input_data.movement_id)
-        if movement.is_fbs_ship_in_transit():
+        if movement.is_fbs_ship_completed():
             return movement
 
         movement.ensure_fbs_reserve_pending()

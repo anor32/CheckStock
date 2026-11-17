@@ -79,14 +79,15 @@ class Movement:
     def is_in_transit(self) -> bool:
         return self.status == MovementStatus.IN_TRANSIT
 
-    def is_fbs_ship_in_transit(self) -> bool:
-        """Идемпотентный no-op: FBS-отгрузка уже переведена в статус in_transit."""
-        return self.type == MovementType.FBS_SHIP and self.status == MovementStatus.IN_TRANSIT
+    def is_fbs_ship_completed(self) -> bool:
+        """Идемпотентный no-op: FBS-отгрузка уже передана и операция завершена."""
+        return self.type == MovementType.FBS_SHIP and self.status == MovementStatus.COMPLETED
 
     def ship_fbs(self) -> Movement:
+        """Отгрузка FBS: передача курьеру, операция завершена."""
         self.type = MovementType.FBS_SHIP
-        self.status = MovementStatus.IN_TRANSIT
-        self.completed_at = None
+        self.status = MovementStatus.COMPLETED
+        self.completed_at = datetime.now(UTC)
         return self
 
     def complete(

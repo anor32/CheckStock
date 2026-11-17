@@ -40,7 +40,7 @@ async def test_fbs_ship_idempotency_does_not_double_deduct(mock_uow):
 
     assert stock.qty_physical == 8
     assert stock.qty_reserved_fbs == 2
-    assert result1.status == MovementStatus.IN_TRANSIT
+    assert result1.status == MovementStatus.COMPLETED
     assert result1.idempotency_key == "create-reserve-key"
     assert mock_uow.stock_repo.update.await_count == 1
     assert mock_uow.movement_repo.save_movement.await_count == 1

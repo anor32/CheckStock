@@ -127,7 +127,7 @@ function inTransitActionButton(m) {
   if (m.type === "fbs_reserve" && m.status === "pending") {
     return `<div class="row-actions"><button class="btn-sm" data-action="fbs-ship" data-id="${m.id}" data-qty="${escapeHtml(m.qty)}">Отправить клиенту</button><button class="btn-sm btn-danger-soft" data-action="fbs-cancel" data-id="${m.id}" data-qty="${escapeHtml(m.qty)}">Отменить отправку</button></div>`;
   }
-  if (m.type === "fbs_ship" && (m.status === "in_transit" || m.status === "pending")) {
+  if (m.type === "fbs_ship") {
     return "—";
   }
   return "—";
