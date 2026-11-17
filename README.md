@@ -9,6 +9,12 @@
 - **Проверки качества:** `uv run pytest -q`, `uv run ruff check .`, `uv run mypy src` (также `uv run mypy src tests`), запуск через Docker Compose, smoke-проверка API/UI.
 - **Тестовые данные из ТЗ:** склады **Север** и **Юг**, артикулы **SKU-101/102/103** с количествами после тестового прихода (см. раздел ниже и `src/infrastructure/fixtures.py`). При старте контейнера API автоматически применяет миграции и загружает фикстуры (`bin/run_api`).
 
+## Видео
+
+**Видео с обзором бизнес-логики**
+
+[Смотреть видео: СheckStockNIkanov_Andrei.mkv](СheckStockNIkanov_Andrei.mkv)
+
 ## Стек
 
 - Python 3.14+, FastAPI, Uvicorn
